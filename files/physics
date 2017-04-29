@@ -1,4 +1,4 @@
-2000000              MAXNODS  max number of nodes anticipated
+5000000              MAXNODS  max number of nodes anticipated
 4                   NR_PHYSA number of physics attributes
 tempr   contin 1    temperature H1 1 component
 EHhat   tangen 2    trace of electric/magnetic field, H(curl), 2 component

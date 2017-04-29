@@ -730,12 +730,13 @@ subroutine elem_dpgMaxwell(Mdle,MdE,MdQ, &
 !
 ! ...for debug printing
   VTYPE, dimension(10)  :: zaux
-  VTYPE, dimension(24)  :: zE
-  VTYPE, dimension(6)   :: zQ
+  !VTYPE, dimension(24)  :: zE
+  !VTYPE, dimension(6)   :: zQ
 
 ! ....Maxwell load and auxiliary variables
-  VTYPE, dimension(3) :: zJ,zImp,qq,p,rntimesp,rn2timesp
-  VTYPE, dimension(3) :: E1,curlE1,E2,curlE2,rntimesE,uE(3),rntimesuE
+  VTYPE, dimension(3) :: zJ,zImp
+  real*8, dimension(3):: qq,p,rntimesp,rn2timesp
+  real*8, dimension(3) :: E1,curlE1,E2,curlE2,rntimesE
 !
   integer,save :: ivis=0
   character    :: uplo, trans,diag
@@ -745,11 +746,11 @@ subroutine elem_dpgMaxwell(Mdle,MdE,MdQ, &
 ! .... for Gram matrix
   integer      :: nk
 ! ..... various variables for the problem
-  real*8  :: h_elem,rjac,weight,wa,v2n,C,EE,CE,E,EC,q,h,omeg,alpha_scale
+  real*8  :: h_elem,rjac,weight,wa,v2n,CC,EE,CE,E,EC,q,h,omeg,alpha_scale
   real*8  :: bjac,impedanceConstant
   integer :: i1,i2,j1,j2,k1,k2,kH,kk,i,j,nrTEST,nint,iflag,kE,k,iprint,l
-  integer :: N,nRHS,nordP,nsign,if,ndom,info,icomp
-  VTYPE   :: zfval,za,zb
+  integer :: N,nRHS,nordP,nsign,if,ndom,info,icomp,nrdof_eig
+  VTYPE   :: zfval,za,zb,zc
 ! ...for lapack eigensolve
   complex*16, allocatable :: Z(:,:), WORK(:)
   real*8, allocatable     :: W(:),   RWORK(:)
@@ -850,8 +851,9 @@ subroutine elem_dpgMaxwell(Mdle,MdE,MdQ, &
   omeg = min(OMEGA,6.d0/h)
 !
 ! ...auxiliary constant1
-  zb = ZI*OMEGA*bg_gain*EPSILON + SIGMA
+  zb = ZI*omeg*bg_gain*EPSILON + SIGMA
   za = ZI*omeg*bg_gain*EPSILON - SIGMA
+  zc = -ZI*omeg*MU
 
 !
 !-----------------------------------------------------------------------
@@ -900,7 +902,7 @@ subroutine elem_dpgMaxwell(Mdle,MdE,MdQ, &
         ion_gain = sqrt(bg_gain)*gainFunction
 ! ...  evaluate auxiliary constant1
         zb = ZI*OMEGA*bg_gain*EPSILON + ion_gain*SIGMA
-        za = ZI*omeg*bg_gain*EPSILON - ion_gain*SIGMA
+        za = ZI*OMEGA*bg_gain*EPSILON - ion_gain*SIGMA
 ! ...... end if for NONLINEAR FLAG check
         endif
 ! ...... end select for checking core domain number
@@ -920,6 +922,7 @@ subroutine elem_dpgMaxwell(Mdle,MdE,MdQ, &
 !......... current heat solution u
 !..................................................................
 ! .....compute the H1 solution at the point
+    alpha_scale = 1.d0
     if(LASER_MODE.eq.1) then
       zsolH = ZERO
       do kH=1,nrdofH
@@ -964,26 +967,26 @@ subroutine elem_dpgMaxwell(Mdle,MdE,MdQ, &
       curlE2(1:3) = curlE2(1:3)/rjac
 !
 ! .........auxiliary quantities
-      C  = curlE1(1)*curlE2(1) + curlE1(2)*curlE2(2) &
+      CC  = curlE1(1)*curlE2(1) + curlE1(2)*curlE2(2) &
               + curlE1(3)*curlE2(3)
       EE = E1(1)*E2(1) + E1(2)*E2(2) + E1(3)*E2(3)
       CE = curlE1(1)*E2(1) + curlE1(2)*E2(2) + curlE1(3)*E2(3)
-      E  = E1(1)*curlE2(1) + E1(2)*curlE2(2) + E1(3)*curlE2(3)
-! .........accumulate for the test stiffness matrix
+      EC  = E1(1)*curlE2(1) + E1(2)*curlE2(2) + E1(3)*curlE2(3)
+! .........accumulate for the test Gram matrix
       k = nk(2*k1-1,2*k2-1)
       AP_Maxwell(k) = AP_Maxwell(k) &
-                   + (C+ (abs(za)**2 + 1.d0)*EE)*weight
+                   + (CC+ (abs(zb)**2 + 1.d0)*EE)*weight
       k = nk(2*k1-1,2*k2  )
       AP_Maxwell(k) = AP_Maxwell(k) &
-                  + (-ZI*omeg*MU*CE - conjg(za)*EC)*weight
+                  + (zc*CE - (zb)*EC)*weight
       if (k1.ne.k2) then
         k = nk(2*k1  ,2*k2-1)
         AP_Maxwell(k) = AP_Maxwell(k) &
-                    + (-za*CE + ZI*omeg*MU*EC)*weight
+                    + (-conjg(zb)*CE -zc*EC)*weight
       endif
       k = nk(2*k1  ,2*k2  )
       AP_Maxwell(k) = AP_Maxwell(k) &
-                + (C+ ((omeg*MU)**2 + 1.d0)*EE)*weight
+                + (CC+ ((abs(zc))**2 + 1.d0)*EE)*weight
 !....... enddo 2nd loop over enriched test H(curl) function
       enddo
 !
@@ -997,10 +1000,10 @@ subroutine elem_dpgMaxwell(Mdle,MdE,MdQ, &
                  + curlE1(icomp)*q*weight
           k = (k2-1)*6 + 3+ icomp
           STIFFEQ(2*k1-1,k) = STIFFEQ(2*k1-1,k) &
-                 + ZI*OMEGA*MU*E1(icomp)*q*weight
+                 -zc*E1(icomp)*q*weight
           k = (k2-1)*6 + icomp
           STIFFEQ(2*k1  ,k) = STIFFEQ(2*k1  ,k) &
-               -zb*alpha_scale*E1(icomp)*q*weight
+               -(zb)*alpha_scale*E1(icomp)*q*weight
           k = (k2-1)*6 + 3+ icomp
           STIFFEQ(2*k1  ,k) = STIFFEQ(2*k1  ,k) &
                + curlE1(icomp)*q*weight
@@ -1033,8 +1036,8 @@ subroutine elem_dpgMaxwell(Mdle,MdE,MdQ, &
 ! ...boundary integrals
 !
   if(GEOM_NO.eq.1) then
-    impedanceConstant = 1.d0/sqrt(1.d0-(PI**2/OMEGA**2))
-    !impedanceConstant = 1.d0
+    !impedanceConstant = 1.d0/sqrt(1.d0-(PI**2/OMEGA**2))
+    impedanceConstant = 1.d0
   else
     impedanceConstant = 1.d0
   endif
@@ -1237,7 +1240,7 @@ subroutine elem_dpgMaxwell(Mdle,MdE,MdQ, &
 !----------------------------------------------------------------------
 !----------------------------------------------------------------------
 !
-!.....check condition number
+! !.....check condition number
 !      nrdof_eig = nrdofEE*2
 !      kk = nrdof_eig*(nrdof_eig+1)/2
 !      allocate(AP_eig(kk))
@@ -1247,9 +1250,9 @@ subroutine elem_dpgMaxwell(Mdle,MdE,MdQ, &
 !      allocate(WORK(nrdof_eig))
 !      allocate(RWORK(nrdof_eig))
 !      allocate(IWORK(1))
-!      call ZHPEVD('N','U',nrdof_eig,
-!     .             AP_eig, W,Z,1,WORK,nrdof_eig,
-!     .             RWORK,nrdof_eig,IWORK,1,info)
+!      call ZHPEVD('N','U',nrdof_eig, &
+!                  AP_eig, W,Z,1,WORK,nrdof_eig, &
+!                  RWORK,nrdof_eig,IWORK,1,info)
 !      if (info .ne. 0) then
 !         write(*,*) 'eig_solve_sc: info = ', info
 !         stop 1

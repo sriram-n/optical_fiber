@@ -47,7 +47,7 @@ program main
 !                        option label     // explanation                        // default value     // parameter
       call get_option_string('-file-vis-upscale','Visualization upscale file location','../../files/vis',FILE_VIS          )
       call get_option_string('-vis-level'       ,'Visualization upscale level (0-3)'  ,'2'                 ,VLEVEL            )
-      call get_option_string('-dir-paraview'    ,'Paraview root directory'            ,'./output/figures/fiberMode8_correct/' ,PARAVIEW_DIR      )
+      call get_option_string('-dir-paraview'    ,'Paraview root directory'            ,'./output/figures/test/' ,PARAVIEW_DIR      )
       call get_option_bool(  '-paraview-geom'   ,'Dump geom at every Paraview call'   ,.TRUE.              ,PARAVIEW_DUMP_GEOM)
       call get_option_bool(  '-paraview-attr'   ,'Dump solution to Paraview'          ,.TRUE.              ,PARAVIEW_DUMP_ATTR)
 !
@@ -71,13 +71,13 @@ program main
       call get_option_int(    '-laserMode'          , 'LASER_MODE'                , 0                  , LASER_MODE  )
 !
       call get_option_real(   '-mu'                 , 'MU'                        , 1.d0               , MU          )
-      call get_option_real(   '-epsilon'            , 'EPSILON'                   , 1.d0               , EPSILON     )
-      call get_option_real(   '-sigma'              , 'SIGMA'                     , 0.d0               , SIGMA       )
+      call get_option_real(   '-epsilon'            , 'EPSILON'                   , 2.d0               , EPSILON     )
+      call get_option_real(   '-sigma'              , 'SIGMA'                     , 3.d0               , SIGMA       )
 !
 !  ...single cube problem: do not forget to reset the flag in the control file
-      call get_option_real(   '-omega'              , 'OMEGA'                     , 0.50d0          , OMEGA        )
+      call get_option_real(   '-omega'              , 'OMEGA'                     , 1.0d0          , OMEGA        )
       call get_option_real(   '-waist'              , 'BEAM_WAIST'                , 0.5d0               , BEAM_WAIST  )
-      call get_option_int(    '-ibc'                , 'IBCFlag'                   , 3                  , IBCFlag     )
+      call get_option_int(    '-ibc'                , 'IBCFlag'                   , 0                  , IBCFlag     )
       call get_option_int(    '-nlflag'             , 'NONLINEAR_FLAG'            , 0                  , NONLINEAR_FLAG)
       call get_option_real(   '-ntheta'             , 'NTHETA'                    , 1.d0               , NTHETA      )
 !
