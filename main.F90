@@ -35,7 +35,7 @@ program main
 !
 !                             option label      // explanation                // default value     // parameter
       call get_option_string( '-file-control'    , 'Control file'              , './files/control'  , FILE_CONTROL)
-      call get_option_string( '-file-geometry'   , 'Geometry file'             , './files/fiber_prism_core_short', FILE_GEOM   )
+      call get_option_string( '-file-geometry'   , 'Geometry file'             , './files/cube_waveguide16', FILE_GEOM   )
       call get_option_string( '-file-phys'       , 'Physics file'              , './files/physics'  , FILE_PHYS   )
       call get_option_string( '-file-refinement' , 'Refinement files location' , '../../files/ref'  , FILE_REFINE )
       call get_option_string( '-file-history'    , 'History file'              , './files/history'  , FILE_HISTORY)
@@ -60,9 +60,9 @@ program main
       call get_option_int(    '-orderx'             , 'NPX'                       , 2                  , NPX         )
       call get_option_int(    '-ordery'             , 'NPY'                       , 1                  , NPY         )
       call get_option_int(    '-orderz'             , 'NPZ'                       , 0                  , NPZ         )
-      call get_option_int(    '-iSol'               , 'iSol'                      , 2                  , ISOL        )
+      call get_option_int(    '-iSol'               , 'iSol'                      , 6                  , ISOL        )
       call get_option_int(    '-problem'            , 'NO_PROBLEM'                , 3                  , NO_PROBLEM  )
-      call get_option_int(    '-geometry-no'        , 'Geometry file number'      , 2                  , GEOM_NO     )
+      call get_option_int(    '-geometry-no'        , 'Geometry file number'      , 1                  , GEOM_NO     )
       call get_option_int(    '-inner-product'      , 'INNER_PRODUCT'             , 1                  , INNER_PRODUCT)
       call get_option_real(   '-kappa'              , 'kappa'                     , 1.d0               , KAPPA       )
       call get_option_real(   '-deltaT'             , 'deltaT'                    , 0.1d0              , DELTAT      )
@@ -71,13 +71,13 @@ program main
       call get_option_int(    '-laserMode'          , 'LASER_MODE'                , 0                  , LASER_MODE  )
 !
       call get_option_real(   '-mu'                 , 'MU'                        , 1.d0               , MU          )
-      call get_option_real(   '-epsilon'            , 'EPSILON'                   , 2.d0               , EPSILON     )
-      call get_option_real(   '-sigma'              , 'SIGMA'                     , 3.d0               , SIGMA       )
+      call get_option_real(   '-epsilon'            , 'EPSILON'                   , 1.d0               , EPSILON     )
+      call get_option_real(   '-sigma'              , 'SIGMA'                     , 0.d0               , SIGMA       )
 !
 !  ...single cube problem: do not forget to reset the flag in the control file
-      call get_option_real(   '-omega'              , 'OMEGA'                     , 1.0d0          , OMEGA        )
+      call get_option_real(   '-omega'              , 'OMEGA'                     , PI*1.5d0          , OMEGA        )
       call get_option_real(   '-waist'              , 'BEAM_WAIST'                , 0.5d0               , BEAM_WAIST  )
-      call get_option_int(    '-ibc'                , 'IBCFlag'                   , 0                  , IBCFlag     )
+      call get_option_int(    '-ibc'                , 'IBCFlag'                   , 3                  , IBCFlag     )
       call get_option_int(    '-nlflag'             , 'NONLINEAR_FLAG'            , 0                  , NONLINEAR_FLAG)
       call get_option_real(   '-ntheta'             , 'NTHETA'                    , 1.d0               , NTHETA      )
 !

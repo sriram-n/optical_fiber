@@ -978,7 +978,7 @@ subroutine elem_dpgMaxwell(Mdle,MdE,MdQ, &
                    + (CC+ (abs(zb)**2 + 1.d0)*EE)*weight
       k = nk(2*k1-1,2*k2  )
       AP_Maxwell(k) = AP_Maxwell(k) &
-                  + (zc*CE - (zb)*EC)*weight
+                  + (-conjg(zc)*CE - (zb)*EC)*weight
       if (k1.ne.k2) then
         k = nk(2*k1  ,2*k2-1)
         AP_Maxwell(k) = AP_Maxwell(k) &
@@ -1036,8 +1036,8 @@ subroutine elem_dpgMaxwell(Mdle,MdE,MdQ, &
 ! ...boundary integrals
 !
   if(GEOM_NO.eq.1) then
-    !impedanceConstant = 1.d0/sqrt(1.d0-(PI**2/OMEGA**2))
-    impedanceConstant = 1.d0
+    impedanceConstant = 1.d0/sqrt(1.d0-(PI**2/OMEGA**2))
+    !impedanceConstant = 1.d0
   else
     impedanceConstant = 1.d0
   endif
