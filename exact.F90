@@ -339,18 +339,18 @@ subroutine hcurl_solution(Xp, E,dE,d2E)
 !  ...a smooth solution
       elseif (ISOL .eq. 2) then
 
-      f_x= sin(OMEGA*Xp(1))
-      f_y= sin(OMEGA*Xp(2))
+      f_x= sin(OMEGA*Xp(1))!dexp(-Xp(1)**2)/20.d0!sin(OMEGA*Xp(1))
+      f_y= sin(OMEGA*Xp(2))!dexp(-Xp(2)**2)/20.d0!sin(OMEGA*Xp(2))
       f_z= sin(OMEGA*Xp(3))
 !
 !     1st order derivatives
-      df_x=(OMEGA)*cos(OMEGA*Xp(1))
-      df_y=(OMEGA)*cos(OMEGA*Xp(2))
+      df_x=(OMEGA)*cos(OMEGA*Xp(1))!-Xp(1)*dexp(-Xp(1)**2)/10.d0!(OMEGA)*cos(OMEGA*Xp(1))
+      df_y=(OMEGA)*cos(OMEGA*Xp(2))!-Xp(2)*dexp(-Xp(2)**2)/10.d0!(OMEGA)*cos(OMEGA*Xp(2))
       df_z=(OMEGA)*cos(OMEGA*Xp(3))
 !
 !     2nd order derivatives
-      ddf_x=-OMEGA**2*f_x
-      ddf_y=-OMEGA**2*f_y
+      ddf_x=-OMEGA**2*f_x!dexp(-Xp(1)**2)*(2.d0*Xp(1)**2-1.d0)/10.d0!-OMEGA**2*f_x
+      ddf_y=-OMEGA**2*f_y!dexp(-Xp(2)**2)*(2.d0*Xp(2)**2-1.d0)/10.d0!-OMEGA**2*f_y
       ddf_z=-OMEGA**2*f_z
 
         !     an exponential
@@ -411,20 +411,21 @@ subroutine hcurl_solution(Xp, E,dE,d2E)
 
       !  ...fundamental TE10 mode for rectangular waveguide
       elseif (ISOL .eq. 6) then
-      impedanceConstant = 1.d0/sqrt(1.d0-(PI**2/OMEGA**2))
+      !impedanceConstant = sqrt(1.d0-(PI**2/OMEGA**2))
+      impedanceConstant = 0.25d0
       f_x=-ZI*(OMEGA/PI)*sin(PI*Xp(1))
       f_y= 1.d0
-      f_z=cdexp(-ZI*OMEGA*Xp(3)/impedanceConstant)
+      f_z=cdexp(-ZI*OMEGA*Xp(3)*impedanceConstant)
 !
 !     1st order derivatives
       df_x=-ZI*(OMEGA/PI)*PI*cos(PI*Xp(1))
       df_y=0.d0
-      df_z=(-ZI*OMEGA/impedanceConstant)*f_z
+      df_z=(-ZI*OMEGA*impedanceConstant)*f_z
 !
 !     2nd order derivatives
       ddf_x=-PI**2*f_x
       ddf_y=0.d0
-      ddf_z=(-ZI*OMEGA/impedanceConstant)*df_z
+      ddf_z=(-ZI*OMEGA*impedanceConstant)*df_z
 
     endif
 
@@ -494,7 +495,7 @@ subroutine hcurl_solution(Xp, E,dE,d2E)
       if (ISOL .eq. 8) then
 !
 !.... plane wave parameters
-      phase = Xp(3)
+      phase = Xp(3)+Xp(2)+Xp(1)
       amplitude = INTENSITY_RATIO**-2
       pz = amplitude*exp(-ZI*OMEGA*phase)
       pz_x = -pz*ZI*OMEGA
@@ -557,7 +558,7 @@ subroutine hcurl_solution(Xp, E,dE,d2E)
           uz_zy = uz_yz
 
 !.... plane wave parameters
-          phase = Xp(3)
+          phase = Xp(3)+Xp(2)+Xp(1)
           amplitude = INTENSITY_RATIO**-2
           pz = amplitude*exp(-ZI*OMEGA*phase)
           pz_x = -pz*ZI*OMEGA
@@ -614,6 +615,116 @@ subroutine hcurl_solution(Xp, E,dE,d2E)
         endif
 !.....  end if for z=0 check
        endif
-!.....  end if for ISOL=8
+!.....  end if for ISOL=9
       endif
+!...... sum of functions exact
+      if (ISOL .eq. 10) then
+!
+!.... pz = sum of solutions
+      pz = Xp(1)+Xp(2)+dsin(OMEGA*Xp(3))!dsin(OMEGA*Xp(1))+dsin(OMEGA*Xp(2))+dsin(OMEGA*Xp(3))
+      pz_x = 1.d0!OMEGA*dcos(OMEGA*Xp(1))
+      pz_y = 1.d0!OMEGA*dcos(OMEGA*Xp(2))
+      pz_z = OMEGA*dcos(OMEGA*Xp(3))
+      pz_xx = ZERO!-OMEGA**2*dsin(OMEGA*Xp(1))
+      pz_xy = ZERO
+      pz_xz = ZERO
+      pz_yx = ZERO
+      pz_yy = ZERO!-OMEGA**2*dsin(OMEGA*Xp(2))
+      pz_yz = ZERO
+      pz_zx = ZERO
+      pz_zy = ZERO
+      pz_zz = -OMEGA**2*dsin(OMEGA*Xp(3))
+!
+!
+      E=pz
+    !  .....1st order derivatives
+      dE(1) = pz_x
+      dE(2) = pz_y
+      dE(3) = pz_z
+!
+!  .....2nd order derivatives
+      d2E(1,1) = pz_xx
+      d2E(1,2) = pz_xy
+      d2E(1,3) = pz_xz
+      d2E(2,1) = d2E(1,2)
+      d2E(2,2) = pz_yy
+      d2E(2,3) = pz_yz
+      d2E(3,1) = d2E(1,3)
+      d2E(3,2) = d2E(2,3)
+      d2E(3,3) = pz_zz
+      endif      
+      
+!...... sum of functions exact
+      if (ISOL .eq. 11) then
+!
+!.... pz = sum + product of solutions
+      pz = (Xp(1)+Xp(2))*dsin(OMEGA*Xp(3))
+      pz_x = dsin(OMEGA*Xp(3))
+      pz_y = dsin(OMEGA*Xp(3))
+      pz_z = OMEGA*(Xp(1)+Xp(2))*dcos(OMEGA*Xp(3))
+      pz_xx = ZERO
+      pz_xy = ZERO
+      pz_xz = OMEGA*dcos(OMEGA*Xp(3))
+      pz_yx = ZERO
+      pz_yy = ZERO
+      pz_yz = OMEGA*dcos(OMEGA*Xp(3))
+      pz_zx = OMEGA*dcos(OMEGA*Xp(3))
+      pz_zy = OMEGA*dcos(OMEGA*Xp(3))
+      pz_zz = -OMEGA**2*(Xp(1)+Xp(2))*dsin(OMEGA*Xp(3))
+!
+!
+      E=pz
+    !  .....1st order derivatives
+      dE(1) = pz_x
+      dE(2) = pz_y
+      dE(3) = pz_z
+!
+!  .....2nd order derivatives
+      d2E(1,1) = pz_xx
+      d2E(1,2) = pz_xy
+      d2E(1,3) = pz_xz
+      d2E(2,1) = d2E(1,2)
+      d2E(2,2) = pz_yy
+      d2E(2,3) = pz_yz
+      d2E(3,1) = d2E(1,3)
+      d2E(3,2) = d2E(2,3)
+      d2E(3,3) = pz_zz
+      endif
+!...... sum of functions exact
+      if (ISOL .eq. 12) then
+!
+!.... pz = sum of solutions
+      pz = dsin(OMEGA*(Xp(1)+Xp(2)+Xp(3)))
+      pz_x = OMEGA*dcos(OMEGA*(Xp(1)+Xp(2)+Xp(3)))
+      pz_y = OMEGA*dcos(OMEGA*(Xp(1)+Xp(2)+Xp(3)))
+      pz_z = OMEGA*dcos(OMEGA*(Xp(1)+Xp(2)+Xp(3)))
+      pz_xx = -OMEGA**2*dsin((Xp(1)+Xp(2)+Xp(3)))
+      pz_xy = -OMEGA**2*dsin((Xp(1)+Xp(2)+Xp(3)))
+      pz_xz = -OMEGA**2*dsin((Xp(1)+Xp(2)+Xp(3)))
+      pz_yx = -OMEGA**2*dsin((Xp(1)+Xp(2)+Xp(3)))
+      pz_yy = -OMEGA**2*dsin((Xp(1)+Xp(2)+Xp(3)))
+      pz_yz = -OMEGA**2*dsin((Xp(1)+Xp(2)+Xp(3)))
+      pz_zx = -OMEGA**2*dsin((Xp(1)+Xp(2)+Xp(3)))
+      pz_zy = -OMEGA**2*dsin((Xp(1)+Xp(2)+Xp(3)))
+      pz_zz = -OMEGA**2*dsin((Xp(1)+Xp(2)+Xp(3)))
+!
+!
+      E=pz
+    !  .....1st order derivatives
+      dE(1) = pz_x
+      dE(2) = pz_y
+      dE(3) = pz_z
+!
+!  .....2nd order derivatives
+      d2E(1,1) = pz_xx
+      d2E(1,2) = pz_xy
+      d2E(1,3) = pz_xz
+      d2E(2,1) = d2E(1,2)
+      d2E(2,2) = pz_yy
+      d2E(2,3) = pz_yz
+      d2E(3,1) = d2E(1,3)
+      d2E(3,2) = d2E(2,3)
+      d2E(3,3) = pz_zz
+      endif      
+      
      end subroutine hcurl_solution

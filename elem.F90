@@ -1036,8 +1036,8 @@ subroutine elem_dpgMaxwell(Mdle,MdE,MdQ, &
 ! ...boundary integrals
 !
   if(GEOM_NO.eq.1) then
-    impedanceConstant = 1.d0/sqrt(1.d0-(PI**2/OMEGA**2))
-    !impedanceConstant = 1.d0
+    !impedanceConstant = sqrt(1.d0-(PI**2/OMEGA**2))
+    impedanceConstant = 1.d0
   else
     impedanceConstant = 1.d0
   endif
@@ -1117,7 +1117,7 @@ subroutine elem_dpgMaxwell(Mdle,MdE,MdQ, &
 ! .............accumulate for the extended stiffness matrix
           STIFFEE(2*k1,2*k2-1) = STIFFEE(2*k1,2*k2-1) &
                 + (qq(1)*rn2timesp(1)+ qq(2)*rn2timesp(2)+ &
-                + qq(3)*rn2timesp(3))*(1.d0/impedanceConstant)*weight
+                + qq(3)*rn2timesp(3))*(impedanceConstant)*weight
 
           STIFFEE(2*k1-1,2*k2-1) = STIFFEE(2*k1-1,2*k2-1) &
                 +  (qq(1)*rntimesp(1)+ qq(2)*rntimesp(2)+ &

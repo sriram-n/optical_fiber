@@ -25,19 +25,19 @@ Regular             point 5
 -1.d0 0.d0 0.d0
 
 Regular             point 6
-0.d0 0.d0 1.d0
+0.d0 0.d0 1.0d0
 
 Regular             point 7
-0.d0 1.d0 1.d0
+0.d0 1.d0 1.0d0
 
 Regular             point 8
-1.d0 0.d0 1.d0
+1.d0 0.d0 1.0d0
 
 Regular             point 9
-0.d0 -1.d0 1.d0
+0.d0 -1.d0 1.0d0
 
 Regular             point 10
--1.d0 0.d0 1.d0
+-1.d0 0.d0 1.0d0
 
 
 

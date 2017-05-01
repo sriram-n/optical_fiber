@@ -185,8 +185,8 @@ subroutine get_bdSource(Mdle,X,Rn,IBCFlag, Imp_val)
 !     initialize source terms
       Imp_val = ZERO
       if(GEOM_NO.eq.1) then
-        impedanceConstant = 1.d0/sqrt(1.d0-(PI**2/OMEGA**2))
-        !impedanceConstant = 1.d0
+        !impedanceConstant = sqrt(1.d0-(PI**2/OMEGA**2))
+        impedanceConstant = 1.d0
       else
         impedanceConstant = 1.d0
       endif
@@ -215,7 +215,7 @@ subroutine get_bdSource(Mdle,X,Rn,IBCFlag, Imp_val)
           call my_cross_product(Rn,zvalE(1:3,2), rntimesH)
 
 !
-          Imp_val = rntimesH - (1.d0/(impedanceConstant))*rn2timesE
+          Imp_val = rntimesH - ((impedanceConstant))*rn2timesE
 !          write(*,*) 'Imp_val is = ', Imp_val
 !
         case default

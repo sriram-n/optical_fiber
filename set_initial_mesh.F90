@@ -106,7 +106,7 @@
           case(2,3,4,5)
           ibc(1:6,1) = (/1,1,1,0,0,0/)
           if(IBCFlag.eq.3) then
-                ibc(1:6,2) = (/6,9,9,0,0,0/)
+                ibc(1:6,2) = (/6,9,6,0,0,0/)
 		      else
   			    ibc(1:6,2) = (/6,6,6,0,0,0/)
 			  end if
@@ -129,6 +129,17 @@
   	        ibc(1:6,2) = (/6,6,6,0,0,0/)
 		  end if
           endselect
+
+  !  .....single prism with Dirichlet, PEC BC on 5 out of 6 faces
+  !  .....Impedance one one face
+      case(6)
+        write(*,*) 'GEOM_NO = ', GEOM_NO
+        ibc(1:6,1) = (/1,1,1,1,1,0/)
+        if(IBCFlag.eq.3) then
+          ibc(1:6,2) = (/6,9,6,6,6,0/)
+        else
+          ibc(1:6,2) = (/6,6,6,6,6,0/)
+        end if
 
 !    ... end select GEOM_NO
      endselect

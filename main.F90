@@ -35,7 +35,7 @@ program main
 !
 !                             option label      // explanation                // default value     // parameter
       call get_option_string( '-file-control'    , 'Control file'              , './files/control'  , FILE_CONTROL)
-      call get_option_string( '-file-geometry'   , 'Geometry file'             , './files/cube_waveguide16', FILE_GEOM   )
+      call get_option_string( '-file-geometry'   , 'Geometry file'             , './files/fiber_prism_core_short', FILE_GEOM   )
       call get_option_string( '-file-phys'       , 'Physics file'              , './files/physics'  , FILE_PHYS   )
       call get_option_string( '-file-refinement' , 'Refinement files location' , '../../files/ref'  , FILE_REFINE )
       call get_option_string( '-file-history'    , 'History file'              , './files/history'  , FILE_HISTORY)
@@ -52,17 +52,17 @@ program main
       call get_option_bool(  '-paraview-attr'   ,'Dump solution to Paraview'          ,.TRUE.              ,PARAVIEW_DUMP_ATTR)
 !
 !
-!     read in problem dependent parameters (defined in module parametersDPG,DPGH1)
+!     read in problem dependent parameters (defined in module parametersDPG)
 !
 !                              option label      // explanation                // default value     // parameter
       call get_option_int(    '-nord-add'           , 'NORD_ADD'                  , 2                  , NORD_ADD    )
       call get_option_int(    '-order-approx'       , 'ORDER_APPROX'              , 3                  , ORDER_APPROX)
       call get_option_int(    '-orderx'             , 'NPX'                       , 2                  , NPX         )
-      call get_option_int(    '-ordery'             , 'NPY'                       , 1                  , NPY         )
-      call get_option_int(    '-orderz'             , 'NPZ'                       , 0                  , NPZ         )
-      call get_option_int(    '-iSol'               , 'iSol'                      , 6                  , ISOL        )
+      call get_option_int(    '-ordery'             , 'NPY'                       , 2                  , NPY         )
+      call get_option_int(    '-orderz'             , 'NPZ'                       , 2                  , NPZ         )
+      call get_option_int(    '-iSol'               , 'iSol'                      , 2                  , ISOL        )
       call get_option_int(    '-problem'            , 'NO_PROBLEM'                , 3                  , NO_PROBLEM  )
-      call get_option_int(    '-geometry-no'        , 'Geometry file number'      , 1                  , GEOM_NO     )
+      call get_option_int(    '-geometry-no'        , 'Geometry file number'      , 2                  , GEOM_NO     )
       call get_option_int(    '-inner-product'      , 'INNER_PRODUCT'             , 1                  , INNER_PRODUCT)
       call get_option_real(   '-kappa'              , 'kappa'                     , 1.d0               , KAPPA       )
       call get_option_real(   '-deltaT'             , 'deltaT'                    , 0.1d0              , DELTAT      )
@@ -70,13 +70,13 @@ program main
       call get_option_int(    '-comp'               , 'ICOMP_EXACT'               , 1                  , ICOMP_EXACT )
       call get_option_int(    '-laserMode'          , 'LASER_MODE'                , 0                  , LASER_MODE  )
 !
-      call get_option_real(   '-mu'                 , 'MU'                        , 1.d0               , MU          )
-      call get_option_real(   '-epsilon'            , 'EPSILON'                   , 1.d0               , EPSILON     )
-      call get_option_real(   '-sigma'              , 'SIGMA'                     , 0.d0               , SIGMA       )
+      call get_option_real(   '-mu'                 , 'MU'                        , 4.d0               , MU          )
+      call get_option_real(   '-epsilon'            , 'EPSILON'                   , 6.d0               , EPSILON     )
+      call get_option_real(   '-sigma'              , 'SIGMA'                     , 10.d0               , SIGMA       )
 !
 !  ...single cube problem: do not forget to reset the flag in the control file
-      call get_option_real(   '-omega'              , 'OMEGA'                     , PI*1.5d0          , OMEGA        )
-      call get_option_real(   '-waist'              , 'BEAM_WAIST'                , 0.5d0               , BEAM_WAIST  )
+      call get_option_real(   '-omega'              , 'OMEGA'                     , 0.50d0          , OMEGA        )
+      call get_option_real(   '-waist'              , 'BEAM_WAIST'                , 1.0d0               , BEAM_WAIST  )
       call get_option_int(    '-ibc'                , 'IBCFlag'                   , 3                  , IBCFlag     )
       call get_option_int(    '-nlflag'             , 'NONLINEAR_FLAG'            , 0                  , NONLINEAR_FLAG)
       call get_option_real(   '-ntheta'             , 'NTHETA'                    , 1.d0               , NTHETA      )
@@ -345,8 +345,8 @@ program main
 !  .......set problem #
             NO_PROBLEM = 3
             call uhm_time_in
-            ! call mumps_interf(MY_NR_RHS)
-             call mumps_sc_3D
+            !call mumps_interf(MY_NR_RHS)
+            call mumps_sc_3D
             !call mumps_interf(MY_NR_RHS)
             call uhm_time_out(t)
             write(*,*) 'time mumps = ', t
@@ -517,13 +517,15 @@ program main
           do while(iref.lt.numRef)
 !  ........ Solve the problem
 !            call solve1(MY_NR_RHS)
-           call mumps_interf(MY_NR_RHS)
-!            call mumps_sc_3D
+             !call mumps_interf(MY_NR_RHS)
+            call uhm_time_in
+            call mumps_sc_3D
             !call mumps_solve_seq(MY_NR_RHS)
 !  ........ Set error flags
             iflag(4) = 1; iflag(1:3) = 0; itag=1
 !  ........ Compute error
             call compute_error(iflag,itag)
+            call uhm_time_out(t)
 !  ......... Compute residual
             !call compute_residual
 !  ........ Do uniform h-refinements
