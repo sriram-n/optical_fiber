@@ -12,6 +12,7 @@ program main
       use physics
       use uhm2
       use problem
+      use matrices
 !
       implicit none
       character(len=1024) :: argv
@@ -35,7 +36,7 @@ program main
 !
 !                             option label      // explanation                // default value     // parameter
       call get_option_string( '-file-control'    , 'Control file'              , './files/control'  , FILE_CONTROL)
-      call get_option_string( '-file-geometry'   , 'Geometry file'             , './files/fiber_prism_core_short', FILE_GEOM   )
+      call get_option_string( '-file-geometry'   , 'Geometry file'             , './files/cube', FILE_GEOM   )
       call get_option_string( '-file-phys'       , 'Physics file'              , './files/physics'  , FILE_PHYS   )
       call get_option_string( '-file-refinement' , 'Refinement files location' , '../../files/ref'  , FILE_REFINE )
       call get_option_string( '-file-history'    , 'History file'              , './files/history'  , FILE_HISTORY)
@@ -58,24 +59,24 @@ program main
       call get_option_int(    '-nord-add'           , 'NORD_ADD'                  , 2                  , NORD_ADD    )
       call get_option_int(    '-order-approx'       , 'ORDER_APPROX'              , 3                  , ORDER_APPROX)
       call get_option_int(    '-orderx'             , 'NPX'                       , 2                  , NPX         )
-      call get_option_int(    '-ordery'             , 'NPY'                       , 2                  , NPY         )
-      call get_option_int(    '-orderz'             , 'NPZ'                       , 2                  , NPZ         )
-      call get_option_int(    '-iSol'               , 'iSol'                      , 2                  , ISOL        )
+      call get_option_int(    '-ordery'             , 'NPY'                       , 1                  , NPY         )
+      call get_option_int(    '-orderz'             , 'NPZ'                       , 0                  , NPZ         )
+      call get_option_int(    '-iSol'               , 'iSol'                      , 6                  , ISOL        )
       call get_option_int(    '-problem'            , 'NO_PROBLEM'                , 3                  , NO_PROBLEM  )
-      call get_option_int(    '-geometry-no'        , 'Geometry file number'      , 2                  , GEOM_NO     )
+      call get_option_int(    '-geometry-no'        , 'Geometry file number'      , 1                  , GEOM_NO     )
       call get_option_int(    '-inner-product'      , 'INNER_PRODUCT'             , 1                  , INNER_PRODUCT)
       call get_option_real(   '-kappa'              , 'kappa'                     , 1.d0               , KAPPA       )
       call get_option_real(   '-deltaT'             , 'deltaT'                    , 0.1d0              , DELTAT      )
       call get_option_real(   '-Tmax'               , 'Tmax'                      , 1.0d0              , TMAX        )
-      call get_option_int(    '-comp'               , 'ICOMP_EXACT'               , 1                  , ICOMP_EXACT )
+      call get_option_int(    '-comp'               , 'ICOMP_EXACT'               , 2                  , ICOMP_EXACT )
       call get_option_int(    '-laserMode'          , 'LASER_MODE'                , 0                  , LASER_MODE  )
 !
-      call get_option_real(   '-mu'                 , 'MU'                        , 4.d0               , MU          )
-      call get_option_real(   '-epsilon'            , 'EPSILON'                   , 6.d0               , EPSILON     )
-      call get_option_real(   '-sigma'              , 'SIGMA'                     , 10.d0               , SIGMA       )
+      call get_option_real(   '-mu'                 , 'MU'                        , 1.d0               , MU          )
+      call get_option_real(   '-epsilon'            , 'EPSILON'                   , 1.d0               , EPSILON     )
+      call get_option_real(   '-sigma'              , 'SIGMA'                     , 0.d0               , SIGMA       )
 !
 !  ...single cube problem: do not forget to reset the flag in the control file
-      call get_option_real(   '-omega'              , 'OMEGA'                     , 0.50d0          , OMEGA        )
+      call get_option_real(   '-omega'              , 'OMEGA'                     , PI*1.50d0          , OMEGA        )
       call get_option_real(   '-waist'              , 'BEAM_WAIST'                , 1.0d0               , BEAM_WAIST  )
       call get_option_int(    '-ibc'                , 'IBCFlag'                   , 3                  , IBCFlag     )
       call get_option_int(    '-nlflag'             , 'NONLINEAR_FLAG'            , 0                  , NONLINEAR_FLAG)
@@ -293,7 +294,8 @@ program main
 
 !  .....time Harmonic Maxwell
         case(3)
-!
+!  ....... set NRFL=0
+          NRFL=0
 !  .......set variables to solve for
           PHYSAm(1:4) = (/.false.,.true.,.false.,.true./)
 !
@@ -338,6 +340,8 @@ program main
 !
 !  .....time Harmonic Maxwell
         case(3)
+!  ....... set NRFL=0
+          NRFL=0
 !  .... check if solving linear or nonlinear problem
           if(NONLINEAR_FLAG.eq.0) then
 !  .......set variables to solve for
@@ -345,8 +349,8 @@ program main
 !  .......set problem #
             NO_PROBLEM = 3
             call uhm_time_in
-            !call mumps_interf(MY_NR_RHS)
-            call mumps_sc_3D
+            call mumps_interf(MY_NR_RHS)
+            !call mumps_sc_3D
             !call mumps_interf(MY_NR_RHS)
             call uhm_time_out(t)
             write(*,*) 'time mumps = ', t
@@ -364,8 +368,8 @@ program main
             nonlin_steps = 5
             do nLaser =1,nonlin_steps
               call uhm_time_in
-              call mumps_sc_3D
-              !call mumps_interf(MY_NR_RHS)
+              !call mumps_sc_3D
+              call mumps_interf(MY_NR_RHS)
               call uhm_time_out(t)
               write(*,*) 'time mumps = ', t
             enddo
@@ -505,6 +509,8 @@ program main
 
 !  .....time harmonic Maxwell
         case(2)
+!  ....... set NRFL=0
+          NRFL=0
           if(NONLINEAR_FLAG.ne.0) then
             write(*,*) 'can test rates only for linear Maxwell'
             stop

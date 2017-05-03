@@ -625,7 +625,7 @@ subroutine elem_dpgMaxwell(Mdle,MdE,MdQ, &
   use parametersDPG
   use element_data
   use data_structure3D
-!  use DPGLaser
+  use matrices
   use problem
 ! ... no implicit statements
   implicit none
@@ -749,7 +749,7 @@ subroutine elem_dpgMaxwell(Mdle,MdE,MdQ, &
   real*8  :: h_elem,rjac,weight,wa,v2n,CC,EE,CE,E,EC,q,h,omeg,alpha_scale
   real*8  :: bjac,impedanceConstant
   integer :: i1,i2,j1,j2,k1,k2,kH,kk,i,j,nrTEST,nint,iflag,kE,k,iprint,l
-  integer :: N,nRHS,nordP,nsign,if,ndom,info,icomp,nrdof_eig
+  integer :: N,nRHS,nordP,nsign,if,ndom,info,icomp,nrdof_eig,idec
   VTYPE   :: zfval,za,zb,zc
 ! ...for lapack eigensolve
   complex*16, allocatable :: Z(:,:), WORK(:)
@@ -793,6 +793,15 @@ subroutine elem_dpgMaxwell(Mdle,MdE,MdQ, &
 !
 ! ...determine nodes coordinates
   call nodcor(Mdle, xnod)
+!
+!..............FOR LONG WAVEGUIDE: RE-USING STIFFNESS MATRICES
+! ...check if one needs to recompute element matrices
+  idec=0
+  call copy_element_matrices(MdE,MdQ,xnod, idec, &
+                             ZalocEE,ZalocEQ, &
+                             ZalocQE,ZalocQQ,ZblocE,ZblocQ)
+  if (idec.eq.1) return
+!..............FOR LONG WAVEGUIDE: RE-USING STIFFNESS MATRICES
 ! ... get current solution dofs
   call solelm(Mdle, zdofH,zdofE,zdofV,zdofQ)
 !
@@ -843,8 +852,11 @@ subroutine elem_dpgMaxwell(Mdle,MdE,MdQ, &
 ! ...clear space for auxiliary matrices
   BLOADE = ZERO; STIFFEE = ZERO; STIFFEQ = ZERO; AP_Maxwell = ZERO
   STIFF_ALLE = ZERO
+
+! stiffness matrices to store
+  ZFL_EE = ZERO; ZFL_EQ = ZERO; ZFL_QQ = ZERO; ZLOADFL_E = ZERO;
+  ZLOADFL_Q = ZERO
 ! ...shortcut: adjust frequency
-!
 ! ...element size:
   h = min(abs(xnod(1,2)-xnod(1,1)),abs(xnod(2,4)-xnod(2,1)), &
       abs(xnod(3,5)-xnod(3,1)))
@@ -1036,8 +1048,8 @@ subroutine elem_dpgMaxwell(Mdle,MdE,MdQ, &
 ! ...boundary integrals
 !
   if(GEOM_NO.eq.1) then
-    !impedanceConstant = sqrt(1.d0-(PI**2/OMEGA**2))
-    impedanceConstant = 1.d0
+    impedanceConstant = sqrt(1.d0-(PI**2/OMEGA**2))
+    !impedanceConstant = 1.d0
   else
     impedanceConstant = 1.d0
   endif
@@ -1299,6 +1311,14 @@ subroutine elem_dpgMaxwell(Mdle,MdE,MdQ, &
 !
   ZalocQE(1:j2,1:j1) = STIFF_ALLE(j1+1:j1+j2,1:j1)
   ZalocQQ(1:j2,1:j2) = STIFF_ALLE(j1+1:j1+j2,j1+1:j1+j2)
+!
+  if (idec.ne.2) then
+    write(*,*) 'elem_dpgMaxwell: idec = ',idec
+    stop 1
+  endif
+  call copy_element_matrices(MdE,MdQ,xnod, idec, &
+                             ZalocEE,ZalocEQ, &
+                             ZalocQE,ZalocQQ,ZblocE,ZblocQ)
 
   if (iprint.ge.1) then
     write(*,7010)
@@ -1337,7 +1357,7 @@ end subroutine elem_dpgMaxwell
 !output: gainFunction (value of gain function)
 !-------------------------------------------------------------------
 subroutine get_gainFunction(EfieldNorm, gainFunction)
-  use DPGLaser
+!  use DPGLaser
   use problem
   implicit none
 !
@@ -1364,3 +1384,104 @@ subroutine get_gainFunction(EfieldNorm, gainFunction)
 !     write(*,*) 'from get_gainFunction: EfieldNorm = '
 !    .             EfieldNorm
 end subroutine get_gainFunction
+
+
+
+
+
+subroutine copy_element_matrices(MdE,MdQ,Xnod, Idec, &
+                                 ZalocEE,ZalocEQ, &
+                                 ZalocQE,ZalocQQ,ZblocE,ZblocQ)
+!
+  use control
+  use parameters
+  use matrices
+  implicit none
+!
+#if C_MODE
+#define VTYPE  complex*16
+#else
+#define VTYPE double precision
+#endif
+!.......declare input/output variables
+  integer,                     intent(in)  :: MdE
+  integer,                     intent(in)  :: MdQ
+  VTYPE, dimension(MdE,MdE) :: ZalocEE
+  VTYPE, dimension(MdE,MdQ) :: ZalocEQ
+  VTYPE, dimension(MdQ,MdE) :: ZalocQE
+  VTYPE, dimension(MdQ,MdQ) :: ZalocQQ
+  VTYPE, dimension(MdE) :: ZblocE
+  VTYPE, dimension(MdQ) :: ZblocQ
+!
+! ...element geometry dof
+  real*8, dimension(3,MAXbrickH),intent(in) :: Xnod
+  integer  :: Idec
+!
+  integer :: iprint,i
+!
+  iprint=1
+!
+    select case(Idec)
+!
+! ..check if one should recompute the element matrices
+    case(0)
+!
+! ....find the corresponding element in the first layer
+      do i=1,NRFL
+        if ((abs(Xnod(1,1)-XYVERT(1,i)).lt.GEOM_TOL).and. &
+            (abs(Xnod(2,1)-XYVERT(2,i)).lt.GEOM_TOL)) go to 10
+      enddo
+      write(*,*) 'copy_element_matrices: NRFL is: ', NRFL
+      write(*,*) 'copy_element_matrices: Xnod(1:3,1) is: ', Xnod(1:2,1)
+      write(*,*) 'i is ', i
+      write(*,*) 'copy_element_matrices: XYVERT(1:2,i) is: ', XYVERT(1:2,i)
+!
+! ....no element with this position has been computed yet
+      Idec=2; return
+!
+! ....element matrices have been computed
+10    Idec=1
+!
+      write(*,*) 'not computing the stiffness matrices!'
+      write(*,*) 'copy_element_matrices: NRFL is: ', NRFL
+      write(*,*) 'copy_element_matrices: Xnod(1:3,1) is: ', Xnod(1:2,1)
+      write(*,*) 'i is ', i
+      write(*,*) 'copy_element_matrices: XYVERT(1:2,i) is: ', XYVERT(1:2,i)
+! ....copy the element matrices from the temporary data structure
+      ZalocEE(1:MdE,1:MdE) = ZFL_EE(1:MdE,1:MdE,i)
+      ZalocEQ(1:MdE,1:MdQ) = ZFL_EQ(1:MdE,1:MdQ,i)
+      ZalocQQ(1:MdQ,1:MdQ) = ZFL_QQ(1:MdQ,1:MdQ,i)
+      ZblocE(1:MdE) = ZLOADFL_E(1:MdE,i)
+      ZblocQ(1:MdQ) = ZLOADFL_Q(1:MdQ,i)
+!
+! ....finish generating the matrices
+      do i=1,MdQ
+        ZalocQE(i,1:MdE) = conjg(ZalocEQ(1:MdE,i))
+      enddo
+      return
+!
+! ..store the element matrices
+    case(2)
+!
+! ....store first vertex node xy coordinates
+      NRFL=NRFL+1
+      if (NRFL.gt.MAXNRFL) then
+        write(*,*) 'copy_element_matrices: NRFL is: ', NRFL
+        write(*,*) 'copy_element_matrices: Xnod(1:3,1) is: ', Xnod(1:3,1)
+        write(*,*) 'copy_element_matrices: INCREASE MAXNRFL'
+        stop 1
+      endif
+      XYVERT(1:2,NRFL) = Xnod(1:2,1)
+!
+! ....copy the element matrices from the temporary data structure
+      ZFL_EE(1:MdE,1:MdE,NRFL) = ZalocEE(1:MdE,1:MdE)
+      ZFL_EQ(1:MdE,1:MdQ,NRFL) = ZalocEQ(1:MdE,1:MdQ)
+      ZFL_QQ(1:MdQ,1:MdQ,NRFL) = ZalocQQ(1:MdQ,1:MdQ)
+      ZLOADFL_E(1:MdE,NRFL) =  ZblocE(1:MdE)
+      ZLOADFL_Q(1:MdQ,NRFL) = ZblocQ(1:MdQ)
+!
+    end select
+!
+!
+  end subroutine copy_element_matrices
+

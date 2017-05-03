@@ -411,8 +411,8 @@ subroutine hcurl_solution(Xp, E,dE,d2E)
 
       !  ...fundamental TE10 mode for rectangular waveguide
       elseif (ISOL .eq. 6) then
-      !impedanceConstant = sqrt(1.d0-(PI**2/OMEGA**2))
-      impedanceConstant = 0.25d0
+      impedanceConstant = sqrt(1.d0-(PI**2/OMEGA**2))
+      !impedanceConstant = 0.25d0
       f_x=-ZI*(OMEGA/PI)*sin(PI*Xp(1))
       f_y= 1.d0
       f_z=cdexp(-ZI*OMEGA*Xp(3)*impedanceConstant)
@@ -652,8 +652,8 @@ subroutine hcurl_solution(Xp, E,dE,d2E)
       d2E(3,1) = d2E(1,3)
       d2E(3,2) = d2E(2,3)
       d2E(3,3) = pz_zz
-      endif      
-      
+      endif
+
 !...... sum of functions exact
       if (ISOL .eq. 11) then
 !
@@ -725,6 +725,6 @@ subroutine hcurl_solution(Xp, E,dE,d2E)
       d2E(3,1) = d2E(1,3)
       d2E(3,2) = d2E(2,3)
       d2E(3,3) = pz_zz
-      endif      
-      
+      endif
+
      end subroutine hcurl_solution

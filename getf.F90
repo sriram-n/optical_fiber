@@ -185,8 +185,8 @@ subroutine get_bdSource(Mdle,X,Rn,IBCFlag, Imp_val)
 !     initialize source terms
       Imp_val = ZERO
       if(GEOM_NO.eq.1) then
-        !impedanceConstant = sqrt(1.d0-(PI**2/OMEGA**2))
-        impedanceConstant = 1.d0
+        impedanceConstant = sqrt(1.d0-(PI**2/OMEGA**2))
+        !impedanceConstant = 1.d0
       else
         impedanceConstant = 1.d0
       endif
@@ -216,7 +216,7 @@ subroutine get_bdSource(Mdle,X,Rn,IBCFlag, Imp_val)
 
 !
           Imp_val = rntimesH - ((impedanceConstant))*rn2timesE
-!          write(*,*) 'Imp_val is = ', Imp_val
+          write(*,*) 'Imp_val is = ', Imp_val
 !
         case default
           !write(*,*) 'get_bdSource: IBCFlag = ',IBCFlag;stop
