@@ -216,7 +216,7 @@ subroutine get_bdSource(Mdle,X,Rn,IBCFlag, Imp_val)
 
 !
           Imp_val = rntimesH - ((impedanceConstant))*rn2timesE
-          write(*,*) 'Imp_val is = ', Imp_val
+          !write(*,*) 'Imp_val is = ', Imp_val
 !
         case default
           !write(*,*) 'get_bdSource: IBCFlag = ',IBCFlag;stop

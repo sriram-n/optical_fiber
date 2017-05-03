@@ -793,11 +793,22 @@ subroutine elem_dpgMaxwell(Mdle,MdE,MdQ, &
 !
 ! ...determine nodes coordinates
   call nodcor(Mdle, xnod)
+
+! ...get the element boundary conditions flags
+  call find_bc(Mdle, ibc)
+  if (iprint.ge.1) then
+    write(*,7001) Mdle
+7001   format('elem: B!FLAGS FOR Mdle = ',i5)
+  do i=1,NR_PHYSA
+    write(*,7002) PHYSA(i), ibc(1:nrf,i)
+7002     format('     ATTRIBUTE = ',a6,' FLAGS = ',6i2)
+  enddo
+  endif
 !
 !..............FOR LONG WAVEGUIDE: RE-USING STIFFNESS MATRICES
 ! ...check if one needs to recompute element matrices
   idec=0
-  call copy_element_matrices(MdE,MdQ,xnod, idec, &
+  call copy_element_matrices(MdE,MdQ,xnod,ibc, idec, &
                              ZalocEE,ZalocEQ, &
                              ZalocQE,ZalocQQ,ZblocE,ZblocQ)
   if (idec.eq.1) return
@@ -834,16 +845,7 @@ subroutine elem_dpgMaxwell(Mdle,MdE,MdQ, &
 ! ... end select case of GEOM_NO
   end select
 !
-! ...get the element boundary conditions flags
-  call find_bc(Mdle, ibc)
-  if (iprint.ge.1) then
-    write(*,7001) Mdle
-7001   format('elem: B!FLAGS FOR Mdle = ',i5)
-  do i=1,NR_PHYSA
-    write(*,7002) PHYSA(i), ibc(1:nrf,i)
-7002     format('     ATTRIBUTE = ',a6,' FLAGS = ',6i2)
-  enddo
-  endif
+
 !
 ! ...clear space for stiffness matrix and rhsv:
   ZblocE = ZERO; ZblocQ = ZERO
@@ -878,6 +880,7 @@ subroutine elem_dpgMaxwell(Mdle,MdE,MdQ, &
   INTEGRATION = 0
 !
 ! ... loop through integration points
+  write(*,*)'elem_dpgMaxwell: nint is: ', nint
   do l=1,nint
     xi(1:3) = xiloc(1:3,l)
     wa = waloc(l)
@@ -1071,6 +1074,7 @@ subroutine elem_dpgMaxwell(Mdle,MdE,MdQ, &
   INTEGRATION = 0
 !
 ! .....loop through integration points
+  write(*,*)'elem_dpgMaxwell: nint boundary is: ', nint
   do l=1,nint
 !
 ! .......face coordinates
@@ -1312,11 +1316,12 @@ subroutine elem_dpgMaxwell(Mdle,MdE,MdQ, &
   ZalocQE(1:j2,1:j1) = STIFF_ALLE(j1+1:j1+j2,1:j1)
   ZalocQQ(1:j2,1:j2) = STIFF_ALLE(j1+1:j1+j2,j1+1:j1+j2)
 !
+
   if (idec.ne.2) then
     write(*,*) 'elem_dpgMaxwell: idec = ',idec
     stop 1
   endif
-  call copy_element_matrices(MdE,MdQ,xnod, idec, &
+  call copy_element_matrices(MdE,MdQ,xnod,ibc, idec, &
                              ZalocEE,ZalocEQ, &
                              ZalocQE,ZalocQQ,ZblocE,ZblocQ)
 
@@ -1389,7 +1394,7 @@ end subroutine get_gainFunction
 
 
 
-subroutine copy_element_matrices(MdE,MdQ,Xnod, Idec, &
+subroutine copy_element_matrices(MdE,MdQ,Xnod,ibc, Idec, &
                                  ZalocEE,ZalocEQ, &
                                  ZalocQE,ZalocQQ,ZblocE,ZblocQ)
 !
@@ -1404,8 +1409,9 @@ subroutine copy_element_matrices(MdE,MdQ,Xnod, Idec, &
 #define VTYPE double precision
 #endif
 !.......declare input/output variables
-  integer,                     intent(in)  :: MdE
-  integer,                     intent(in)  :: MdQ
+  integer,                     intent(in)    :: MdE
+  integer,                     intent(in)    :: MdQ
+  integer, dimension(6,4), intent(in) :: ibc
   VTYPE, dimension(MdE,MdE) :: ZalocEE
   VTYPE, dimension(MdE,MdQ) :: ZalocEQ
   VTYPE, dimension(MdQ,MdE) :: ZalocQE
@@ -1417,7 +1423,8 @@ subroutine copy_element_matrices(MdE,MdQ,Xnod, Idec, &
   real*8, dimension(3,MAXbrickH),intent(in) :: Xnod
   integer  :: Idec
 !
-  integer :: iprint,i
+  integer :: iprint,i,checkIBC,j
+  !checkIBC = 0
 !
   iprint=1
 !
@@ -1425,28 +1432,40 @@ subroutine copy_element_matrices(MdE,MdQ,Xnod, Idec, &
 !
 ! ..check if one should recompute the element matrices
     case(0)
+! ... check if IBC is imposed, if so, always compute matrices
+      do j=1,6
+        if(ibc(j,2).eq.9) then
+          write(*,*) 'ibc is imposed'
+          Idec = 2
+          return
+        endif
+      enddo
 !
 ! ....find the corresponding element in the first layer
       do i=1,NRFL
         if ((abs(Xnod(1,1)-XYVERT(1,i)).lt.GEOM_TOL).and. &
             (abs(Xnod(2,1)-XYVERT(2,i)).lt.GEOM_TOL)) go to 10
       enddo
-      write(*,*) 'copy_element_matrices: NRFL is: ', NRFL
-      write(*,*) 'copy_element_matrices: Xnod(1:3,1) is: ', Xnod(1:2,1)
-      write(*,*) 'i is ', i
-      write(*,*) 'copy_element_matrices: XYVERT(1:2,i) is: ', XYVERT(1:2,i)
+      !write(*,*) 'copy_element_matrices: NRFL is: ', NRFL
+      !write(*,*) 'copy_element_matrices: Xnod(1:3,1) is: ', Xnod(1:2,1)
+      !write(*,*) 'i is ', i
+      !write(*,*) 'copy_element_matrices: XYVERT(1:2,i) is: ', XYVERT(1:2,i)
 !
 ! ....no element with this position has been computed yet
       Idec=2; return
 !
 ! ....element matrices have been computed
 10    Idec=1
+      ! if (checkIBC.eq.1) then
+      !   Idec=2
+      !   return
+      ! endif
 !
       write(*,*) 'not computing the stiffness matrices!'
-      write(*,*) 'copy_element_matrices: NRFL is: ', NRFL
-      write(*,*) 'copy_element_matrices: Xnod(1:3,1) is: ', Xnod(1:2,1)
-      write(*,*) 'i is ', i
-      write(*,*) 'copy_element_matrices: XYVERT(1:2,i) is: ', XYVERT(1:2,i)
+      !write(*,*) 'copy_element_matrices: NRFL is: ', NRFL
+      !write(*,*) 'copy_element_matrices: Xnod(1:3,1) is: ', Xnod(1:2,1)
+      !write(*,*) 'i is ', i
+      !write(*,*) 'copy_element_matrices: XYVERT(1:2,i) is: ', XYVERT(1:2,i)
 ! ....copy the element matrices from the temporary data structure
       ZalocEE(1:MdE,1:MdE) = ZFL_EE(1:MdE,1:MdE,i)
       ZalocEQ(1:MdE,1:MdQ) = ZFL_EQ(1:MdE,1:MdQ,i)
@@ -1466,8 +1485,8 @@ subroutine copy_element_matrices(MdE,MdQ,Xnod, Idec, &
 ! ....store first vertex node xy coordinates
       NRFL=NRFL+1
       if (NRFL.gt.MAXNRFL) then
-        write(*,*) 'copy_element_matrices: NRFL is: ', NRFL
-        write(*,*) 'copy_element_matrices: Xnod(1:3,1) is: ', Xnod(1:3,1)
+        !write(*,*) 'copy_element_matrices: NRFL is: ', NRFL
+        !write(*,*) 'copy_element_matrices: Xnod(1:3,1) is: ', Xnod(1:3,1)
         write(*,*) 'copy_element_matrices: INCREASE MAXNRFL'
         stop 1
       endif

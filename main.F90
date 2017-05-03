@@ -36,7 +36,7 @@ program main
 !
 !                             option label      // explanation                // default value     // parameter
       call get_option_string( '-file-control'    , 'Control file'              , './files/control'  , FILE_CONTROL)
-      call get_option_string( '-file-geometry'   , 'Geometry file'             , './files/cube', FILE_GEOM   )
+      call get_option_string( '-file-geometry'   , 'Geometry file'             , './files/cube_waveguide4', FILE_GEOM   )
       call get_option_string( '-file-phys'       , 'Physics file'              , './files/physics'  , FILE_PHYS   )
       call get_option_string( '-file-refinement' , 'Refinement files location' , '../../files/ref'  , FILE_REFINE )
       call get_option_string( '-file-history'    , 'History file'              , './files/history'  , FILE_HISTORY)
@@ -349,8 +349,8 @@ program main
 !  .......set problem #
             NO_PROBLEM = 3
             call uhm_time_in
-            call mumps_interf(MY_NR_RHS)
-            !call mumps_sc_3D
+            !call mumps_interf(MY_NR_RHS)
+            call mumps_sc_3D
             !call mumps_interf(MY_NR_RHS)
             call uhm_time_out(t)
             write(*,*) 'time mumps = ', t
@@ -368,8 +368,8 @@ program main
             nonlin_steps = 5
             do nLaser =1,nonlin_steps
               call uhm_time_in
-              !call mumps_sc_3D
-              call mumps_interf(MY_NR_RHS)
+              call mumps_sc_3D
+              !call mumps_interf(MY_NR_RHS)
               call uhm_time_out(t)
               write(*,*) 'time mumps = ', t
             enddo

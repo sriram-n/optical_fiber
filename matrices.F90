@@ -26,6 +26,7 @@ module matrices
 !
 ! # of stored elements in the first layer
   integer :: NRFL
+!!$OMP THREADPRIVATE (NRFL)
 !
 ! order of elements
   integer, parameter :: MYP=6
