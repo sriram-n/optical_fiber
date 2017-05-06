@@ -751,12 +751,15 @@ subroutine elem_dpgMaxwell(Mdle,MdE,MdQ, &
   integer :: i1,i2,j1,j2,k1,k2,kH,kk,i,j,nrTEST,nint,iflag,kE,k,iprint,l
   integer :: N,nRHS,nordP,nsign,if,ndom,info,icomp,nrdof_eig,idec
   VTYPE   :: zfval,za,zb,zc
+!  ... for constraints
+  VTYPE, allocatable  :: zConstraintMatrix(:,:)
+  VTYPE, allocatable  ::  zConstraintLoad(:)
 ! ...for lapack eigensolve
   complex*16, allocatable :: Z(:,:), WORK(:)
   real*8, allocatable     :: W(:),   RWORK(:)
   integer, allocatable    :: IWORK(:)
 ! ... for gain function
-  real*8  :: bg_gain, ion_gain,EfieldNorm,gainFunction
+  real*8  :: bg_gain, ion_gain,EfieldNorm,gainFunction,rndotE,alpha
 
   nk(k1,k2) = (k2-1)*k2/2+k1
 !
@@ -805,14 +808,14 @@ subroutine elem_dpgMaxwell(Mdle,MdE,MdQ, &
   enddo
   endif
 !
-!..............FOR LONG WAVEGUIDE: RE-USING STIFFNESS MATRICES
-! ...check if one needs to recompute element matrices
-  idec=0
-  call copy_element_matrices(MdE,MdQ,xnod,ibc, idec, &
-                             ZalocEE,ZalocEQ, &
-                             ZalocQE,ZalocQQ,ZblocE,ZblocQ)
+! ! !..............FOR LONG WAVEGUIDE: RE-USING STIFFNESS MATRICES
+! ! ...check if one needs to recompute element matrices
+!   idec=0
+!   call copy_element_matrices(MdE,MdQ,xnod,ibc, idec, &
+!                              ZalocEE,ZalocEQ, &
+!                              ZalocQE,ZalocQQ,ZblocE,ZblocQ)
   if (idec.eq.1) return
-!..............FOR LONG WAVEGUIDE: RE-USING STIFFNESS MATRICES
+! !..............FOR LONG WAVEGUIDE: RE-USING STIFFNESS MATRICES
 ! ... get current solution dofs
   call solelm(Mdle, zdofH,zdofE,zdofV,zdofQ)
 !
@@ -864,10 +867,11 @@ subroutine elem_dpgMaxwell(Mdle,MdE,MdQ, &
       abs(xnod(3,5)-xnod(3,1)))
   omeg = min(OMEGA,6.d0/h)
 !
+  omeg = OMEGA
 ! ...auxiliary constant1
-  zb = ZI*omeg*bg_gain*EPSILON + SIGMA
-  za = ZI*omeg*bg_gain*EPSILON - SIGMA
-  zc = -ZI*omeg*MU
+  za = ZI*omeg*bg_gain*EPSILON + SIGMA
+  zb = ZI*omeg*bg_gain*EPSILON - SIGMA
+  zc = ZI*omeg*MU
 
 !
 !-----------------------------------------------------------------------
@@ -880,7 +884,7 @@ subroutine elem_dpgMaxwell(Mdle,MdE,MdQ, &
   INTEGRATION = 0
 !
 ! ... loop through integration points
-  write(*,*)'elem_dpgMaxwell: nint is: ', nint
+  !write(*,*)'elem_dpgMaxwell: nint is: ', nint
   do l=1,nint
     xi(1:3) = xiloc(1:3,l)
     wa = waloc(l)
@@ -987,21 +991,28 @@ subroutine elem_dpgMaxwell(Mdle,MdE,MdQ, &
       EE = E1(1)*E2(1) + E1(2)*E2(2) + E1(3)*E2(3)
       CE = curlE1(1)*E2(1) + curlE1(2)*E2(2) + curlE1(3)*E2(3)
       EC  = E1(1)*curlE2(1) + E1(2)*curlE2(2) + E1(3)*curlE2(3)
-! .........accumulate for the test Gram matrix
+! .........accumulate for the test Gram matrix: adjoint graph
       k = nk(2*k1-1,2*k2-1)
       AP_Maxwell(k) = AP_Maxwell(k) &
-                   + (CC+ (abs(zb)**2 + 1.d0)*EE)*weight
+                   + (CC+ (abs(ZI*OMEGA*EPSILON-SIGMA)**2 + 1.d0)*EE)*weight
       k = nk(2*k1-1,2*k2  )
       AP_Maxwell(k) = AP_Maxwell(k) &
-                  + (-conjg(zc)*CE - (zb)*EC)*weight
+                  + (ZI*OMEGA*MU*CE + (ZI*OMEGA*EPSILON-SIGMA)*EC)*weight
       if (k1.ne.k2) then
         k = nk(2*k1  ,2*k2-1)
         AP_Maxwell(k) = AP_Maxwell(k) &
-                    + (-conjg(zb)*CE -zc*EC)*weight
+                    + (conjg(ZI*OMEGA*EPSILON-SIGMA)*CE -ZI*OMEGA*MU*EC)*weight
       endif
       k = nk(2*k1  ,2*k2  )
       AP_Maxwell(k) = AP_Maxwell(k) &
-                + (CC+ ((abs(zc))**2 + 1.d0)*EE)*weight
+                + (CC+ ((abs(ZI*OMEGA*MU))**2 + 1.d0)*EE)*weight
+! ! .........accumulate for the test Gram matrix: mathematicians norm
+!       k = nk(2*k1-1,2*k2-1)
+!       AP_Maxwell(k) = AP_Maxwell(k) &
+!                    + (CC+ 1.d0*EE)*weight
+!       k = nk(2*k1  ,2*k2  )
+!       AP_Maxwell(k) = AP_Maxwell(k) &
+!                 + (CC+ 1.d0*EE)*weight
 !....... enddo 2nd loop over enriched test H(curl) function
       enddo
 !
@@ -1015,7 +1026,7 @@ subroutine elem_dpgMaxwell(Mdle,MdE,MdQ, &
                  + curlE1(icomp)*q*weight
           k = (k2-1)*6 + 3+ icomp
           STIFFEQ(2*k1-1,k) = STIFFEQ(2*k1-1,k) &
-                 -zc*E1(icomp)*q*weight
+                 +zc*E1(icomp)*q*weight
           k = (k2-1)*6 + icomp
           STIFFEQ(2*k1  ,k) = STIFFEQ(2*k1  ,k) &
                -(zb)*alpha_scale*E1(icomp)*q*weight
@@ -1074,7 +1085,7 @@ subroutine elem_dpgMaxwell(Mdle,MdE,MdQ, &
   INTEGRATION = 0
 !
 ! .....loop through integration points
-  write(*,*)'elem_dpgMaxwell: nint boundary is: ', nint
+  !write(*,*)'elem_dpgMaxwell: nint boundary is: ', nint
   do l=1,nint
 !
 ! .......face coordinates
@@ -1306,6 +1317,109 @@ subroutine elem_dpgMaxwell(Mdle,MdE,MdQ, &
     STIFF_ALLE(i+1:NRHS,i) = conjg(STIFF_ALLE(i,i+1:NRHS))
   enddo
 !
+
+! !----------------------------------------------------------------------
+! ! c   ..penalty constraint
+
+!   allocate(zConstraintMatrix(2,6*nrdofQ+2*NrdofE))
+!   allocate(zConstraintLoad(2))
+! !
+!   alpha = 1000000.d0
+!   zConstraintLoad = ZERO; zConstraintMatrix = ZERO
+! !   ...boundary integrals...
+
+! !   ...loop through element edges
+! ! ...loop through element faces
+!   do if=1,nrf
+! !
+! ! .....sign factor to determine the OUTWARD normal unit vector
+!   nsign = nsign_param(etype,if)
+! !
+! ! .....face type
+!   ftype = face_type(etype,if)
+! !
+! ! .....face order of approximation
+!   call face_order(etype,if,norder, norderf)
+! !
+! ! .....set 2D quadrature
+!   INTEGRATION = NORD_ADD
+!   call set_2Dint(ftype,norderf, nint,tloc,wtloc)
+!   INTEGRATION = 0
+! !
+! ! .....loop through integration points
+!  ! write(*,*)'elem_dpgMaxwell: nint boundary is: ', nint
+!   do l=1,nint
+! !
+! ! .......face coordinates
+!     t(1:2) = tloc(1:2,l)
+! !
+! ! .......face parametrization
+!     call face_param(etype,if,t, xi,dxidt)
+! !
+! ! .......determine element H1 shape functions (for geometry)
+!     call shape3H(etype,xi,norder,norient_edge,norient_face, &
+!                      nrdofH,shapH,gradH)
+! !
+! ! .......determine element H(curl) shape functions (for fluxes)
+!     call shape3E(etype,xi,norderc,norient_edge,norient_face, &
+!                      nrdofE,shapE,curlE)
+! !
+! ! .......geometry
+!     call bgeom3D(Mdle,xi,xnod,shapH,gradH,nrdofH,dxidt,nsign, &
+!                      x,dxdxi,dxidx,rjac,dxdt,rn,bjac)
+!     weight = bjac*wtloc(l)
+! ! .........loop through Hcurl trial functions
+!       do k1=1,nrdofE
+! !
+! ! ...........value of the shape function at the point
+!         qq(1:3) = shapE(1,k1)*dxidx(1,1:3) &
+!                      + shapE(2,k1)*dxidx(2,1:3) &
+!                      + shapE(3,k1)*dxidx(3,1:3)
+!         call dot_product(rn,qq, rndotE)
+! !
+! ! ...........accumulate for the load vector
+!       k = 2*k1-1
+!       zConstraintMatrix(1,k) = zConstraintMatrix(1,k) &
+!                     + rndotE*weight
+!       k = 2*k1
+!       zConstraintMatrix(2,k) = zConstraintMatrix(2,k) &
+!                     + rndotE*weight
+! !...    end loop over trial space
+!       enddo
+! !...    end loop over integration points
+!     enddo
+! !...    end loop over faces
+!   enddo
+
+!   ! do i=1,NRHS-1
+!   !   write(*,*) 'zConstraintMatrix(1,i) is : ', zConstraintMatrix(1,i)
+!   !   write(*,*) 'zConstraintMatrix(2,i) is : ', zConstraintMatrix(2,i)
+!   ! enddo
+
+!     ! call pause
+
+!   zConstraintMatrix = alpha*zConstraintMatrix
+!   zConstraintLoad = alpha*zConstraintLoad
+
+!   do i=1,NRHS-1
+!     do j=1,NRHS-1
+!       STIFF_ALLE(i,j) = STIFF_ALLE(i,j) + conjg(zConstraintMatrix(1,i))*zConstraintMatrix(1,j) &
+!             + conjg(zConstraintMatrix(2,i))*zConstraintMatrix(2,j)
+!     enddo
+!   enddo
+
+!   !call ZHERK(uplo,trans,NRHS-1,2,ZONE,zConstraintMatrix, &
+!   !           NRHS-1,ZONE, &
+!   !           STIFF_ALLE(1:NRHS-1,1:NRHS-1),NRHS-1)
+!       ! STIFF_ALLE(NRHS,1:NRHS-1) = &
+!       !       conjg(zConstraintMatrix(1,1:NRHS-1))*zConstraintLoad(1) &
+!       !       +conjg(zConstraintMatrix(2,1:NRHS-1))*zConstraintLoad(2)
+!   deallocate(zConstraintMatrix,zConstraintLoad)
+!   ! do i=1,NRHS-1
+!   !   STIFF_ALLE(i+1:NRHS,i) = conjg(STIFF_ALLE(i,i+1:NRHS))
+!   ! enddo
+! ! !----------------------------------------------------------------------
+! ! c   ..end of penalty constraint
 !
   ZblocE(1:j1) = STIFF_ALLE(1:j1,j1+j2+1)
   ZblocQ(1:j2) = STIFF_ALLE(j1+1:j1+j2,j1+j2+1)
@@ -1317,13 +1431,13 @@ subroutine elem_dpgMaxwell(Mdle,MdE,MdQ, &
   ZalocQQ(1:j2,1:j2) = STIFF_ALLE(j1+1:j1+j2,j1+1:j1+j2)
 !
 
-  if (idec.ne.2) then
-    write(*,*) 'elem_dpgMaxwell: idec = ',idec
-    stop 1
-  endif
-  call copy_element_matrices(MdE,MdQ,xnod,ibc, idec, &
-                             ZalocEE,ZalocEQ, &
-                             ZalocQE,ZalocQQ,ZblocE,ZblocQ)
+ ! if (idec.ne.2) then
+ !   write(*,*) 'elem_dpgMaxwell: idec = ',idec
+ !   stop 1
+ ! endif
+ ! call copy_element_matrices(MdE,MdQ,xnod,ibc, idec, &
+ !                            ZalocEE,ZalocEQ, &
+ !                            ZalocQE,ZalocQQ,ZblocE,ZblocQ)
 
   if (iprint.ge.1) then
     write(*,7010)
@@ -1424,7 +1538,7 @@ subroutine copy_element_matrices(MdE,MdQ,Xnod,ibc, Idec, &
   integer  :: Idec
 !
   integer :: iprint,i,checkIBC,j
-  !checkIBC = 0
+  checkIBC = 0
 !
   iprint=1
 !
@@ -1436,6 +1550,9 @@ subroutine copy_element_matrices(MdE,MdQ,Xnod,ibc, Idec, &
       do j=1,6
         if(ibc(j,2).eq.9) then
           write(*,*) 'ibc is imposed'
+        !  checkIBC = checkIBC+1
+        !endif
+        !if(checkIBC.eq.5) then
           Idec = 2
           return
         endif
@@ -1447,7 +1564,7 @@ subroutine copy_element_matrices(MdE,MdQ,Xnod,ibc, Idec, &
             (abs(Xnod(2,1)-XYVERT(2,i)).lt.GEOM_TOL)) go to 10
       enddo
       !write(*,*) 'copy_element_matrices: NRFL is: ', NRFL
-      !write(*,*) 'copy_element_matrices: Xnod(1:3,1) is: ', Xnod(1:2,1)
+      !write(*,*) 'copy_elniement_matrices: Xnod(1:3,1) is: ', Xnod(1:2,1)
       !write(*,*) 'i is ', i
       !write(*,*) 'copy_element_matrices: XYVERT(1:2,i) is: ', XYVERT(1:2,i)
 !
@@ -1504,3 +1621,163 @@ subroutine copy_element_matrices(MdE,MdQ,Xnod,ibc, Idec, &
 !
   end subroutine copy_element_matrices
 
+
+
+
+
+! !----------------------------------------------------------------------
+! ! c   ..penalty constraint
+
+!   allocate(zConstraintMatrix(2,6*nrdofQ+2*NrdofE))
+!   allocate(zConstraintLoad(2))
+! !
+!   alpha = 1000.d0
+!   zConstraintLoad = ZERO; zConstraintMatrix = ZERO
+! !   ...boundary integrals...
+
+! !   ...loop through element edges
+! ! ...loop through element faces
+!   do if=1,nrf
+! !
+! ! .....sign factor to determine the OUTWARD normal unit vector
+!   nsign = nsign_param(etype,if)
+! !
+! ! .....face type
+!   ftype = face_type(etype,if)
+! !
+! ! .....face order of approximation
+!   call face_order(etype,if,norder, norderf)
+! !
+! ! .....set 2D quadrature
+!   INTEGRATION = NORD_ADD
+!   call set_2Dint(ftype,norderf, nint,tloc,wtloc)
+!   INTEGRATION = 0
+! !
+! ! .....loop through integration points
+!   write(*,*)'elem_dpgMaxwell: nint boundary is: ', nint
+!   do l=1,nint
+! !
+! ! .......face coordinates
+!     t(1:2) = tloc(1:2,l)
+! !
+! ! .......face parametrization
+!     call face_param(etype,if,t, xi,dxidt)
+! !
+! ! .......determine element H1 shape functions (for geometry)
+!     call shape3H(etype,xi,norder,norient_edge,norient_face, &
+!                      nrdofH,shapH,gradH)
+! !
+! ! .......determine element H(curl) shape functions (for fluxes)
+!     call shape3E(etype,xi,norderc,norient_edge,norient_face, &
+!                      nrdofE,shapE,curlE)
+! !
+! ! .......geometry
+!     call bgeom3D(Mdle,xi,xnod,shapH,gradH,nrdofH,dxidt,nsign, &
+!                      x,dxdxi,dxidx,rjac,dxdt,rn,bjac)
+!     weight = bjac*wtloc(l)
+! ! .........loop through Hcurl trial functions
+!       do k1=1,nrdofE
+! !
+! ! ...........value of the shape function at the point
+!         qq(1:3) = shapE(1,k1)*dxidx(1,1:3) &
+!                      + shapE(2,k1)*dxidx(2,1:3) &
+!                      + shapE(3,k1)*dxidx(3,1:3)
+!         dot_product(rn,qq, rndotE)
+! !
+! ! ...........accumulate for the load vector
+!       zConstraintMatrix = alpha*zConstraintMatrix
+!       zConstraintLoad = alpha*zConstraintLoad
+!       k = 2*k1-1
+!       zConstraintMatrix(k) = zConstraintMatrix(k) &
+!                     + rndotE*weight
+!       k = 2*k1
+!       zConstraintMatrix(k) = zConstraintMatrix(k) &
+!                     + rndotE*weight
+! !...    end loop over trial space
+!       enddo
+! !...    end loop over integration points
+!     enddo
+! !...    end loop over faces
+!   enddo
+
+!   call ZHERK(uplo,trans,NRHS-1,2,ZONE,zConstraintMatrix, &
+!               NRHS-1,ZONE, &
+!               STIFF_ALLE(1:NRHS-1,1:NRHS-1),NRHS-1)
+!       STIFF_ALLE(NRHS,1:NRHS-1) = &
+!             conjg(zConstraintMatrix(1,1:NRHS-1))*zConstraintLoad(1) &
+!             +conjg(zConstraintMatrix(2,1:NRHS-1))*zConstraintLoad(2)
+!   ...element integrals...
+!       call set_2Dint(type,norderP, nint,xiloc,waloc)
+!       do l=1,nint
+!         xi(1:2) = xiloc(1:2,l)
+!         wa = waloc(l)
+!
+!   .....determine element H1 shape functions (for geometry)
+!         call shape2DH(type,xi,norder,norient, nrdofHf,shapH,gradH)
+!
+!   .....determine trial L2 shape functions
+!         call shape2DQ(type,xi,norder, nrdofQ,shapQ)
+!
+!   .....geometry
+!         call geom(xnod,shapH,gradH,nrdofHf, x,dxdxi,dxidx,rjac)
+!         weight = rjac*wa
+!
+!   .....get source
+!         call get_source(Mdle,xi,x, zf)
+!
+!           zd = zd + zf(3)*weight
+!
+
+!   .......loop through L2 trial shape functions
+!           do k2=1,nrdofQ
+!
+!   .........Piola transformation
+!             p = shapQ(k2)/rjac
+!
+!             m = (k2-1)*3+3
+!             zCp(m) = zCp(m) + ZI*OMEGA*p*weight
+!           enddo
+!
+!   ...end of loop through integration points
+!       enddo
+
+
+
+!       zCp = conjg(zCp)
+!       zCu = conjg(zCu)
+
+
+!    ...modify zalocVV for the constraints
+!       call zgerc(nrdofV,nrdofV,alpha,zCu,1,zCu,1,zalocVV(1:j2,1:j2)
+!      .            ,nrdofV)
+
+
+
+!       call zgerc(3*nrdofQ,3*nrdofQ,alpha,zCp,1,zCp,1,
+!      .            zalocQQ(1:j3,1:j3),3*nrdofQ)
+
+
+
+
+
+!       call zgerc(nrdofV,3*nrdofQ,alpha,zCu,1,zCp,1,
+!      .            zalocVQ(1:j2,1:j3),nrdofV)
+
+
+
+!       call zgerc(3*nrdofQ,nrdofV,alpha,zCp,1,zCu,1,
+!      .            zalocQV(1:j3,1:j2),3*nrdofQ)
+
+
+
+
+
+
+!       ZblocV(1:j2) = ZblocV(1:j2) + alpha*zd*zCu(1:j2)
+!       ZblocQ(1:j3) = ZblocQ(1:j3) + alpha*zd*zCp(1:j3)
+
+
+! C  ....................................................................
+! C  ....................................................................
+! c
+!       deallocate(zCu,zCp)

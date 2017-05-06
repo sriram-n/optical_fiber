@@ -22,14 +22,14 @@ module matrices
 #endif
 !
 ! max # of elements in the first layer
-  integer, parameter :: MAXNRFL=4
+  integer, parameter :: MAXNRFL=8
 !
 ! # of stored elements in the first layer
   integer :: NRFL
 !!$OMP THREADPRIVATE (NRFL)
 !
 ! order of elements
-  integer, parameter :: MYP=6
+  integer, parameter :: MYP=5
 !
 ! matrix dimensions
   integer, parameter :: MYE = 3*MYP*(MYP+1)**2*2

@@ -427,6 +427,26 @@ subroutine hcurl_solution(Xp, E,dE,d2E)
       ddf_y=0.d0
       ddf_z=(-ZI*OMEGA*impedanceConstant)*df_z
 
+!----------- 2nd prob -------------------------------------------------------
+!  ...a smooth solution
+      elseif (ISOL .eq. 50) then
+
+      f_x= Xp(1)*(1.d0-Xp(1))!dexp(-Xp(1)**2)/20.d0!sin(OMEGA*Xp(1))
+      f_y= Xp(2)*(1.d0-Xp(2))!dexp(-Xp(2)**2)/20.d0!sin(OMEGA*Xp(2))
+      f_z= 1.d0!Xp(3)*(1.d0-Xp(3))
+!
+!     1st order derivatives
+      df_x= 1.d0-2.d0*Xp(1)!-Xp(1)*dexp(-Xp(1)**2)/10.d0!(OMEGA)*cos(OMEGA*Xp(1))
+      df_y=1.d0-2.d0*Xp(2)!-Xp(2)*dexp(-Xp(2)**2)/10.d0!(OMEGA)*cos(OMEGA*Xp(2))
+      df_z=ZERO!1.d0-2.d0*Xp(3)
+!
+!     2nd order derivatives
+      ddf_x=-2.d0!dexp(-Xp(1)**2)*(2.d0*Xp(1)**2-1.d0)/10.d0!-OMEGA**2*f_x
+      ddf_y=-2.d0!dexp(-Xp(2)**2)*(2.d0*Xp(2)**2-1.d0)/10.d0!-OMEGA**2*f_y
+      ddf_z=ZERO!-2.d0
+
+        !     an exponential
+
     endif
 
 !     !  .....1st order derivatives
