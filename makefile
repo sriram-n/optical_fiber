@@ -91,3 +91,4 @@ clean :
 	@rm -rf $(OBJ_PATH)
 	@rm -f $(EXEC)
 	@rm -f *~
+	@rm *.mod

@@ -185,22 +185,22 @@ subroutine get_bdSource(Mdle,X,Rn,IBCFlag, Imp_val)
 !     initialize source terms
       Imp_val = ZERO
       if(GEOM_NO.eq.1) then
-        impedanceConstant = sqrt(1.d0-(PI**2/OMEGA**2))
-        !impedanceConstant = 1.d0
+        !impedanceConstant = sqrt(1.d0-(PI**2/OMEGA**2))
+        impedanceConstant = 1.d0
       else
         impedanceConstant = 1.d0
       endif
 !
       select case(NEXACT)
 !  ... known HOMOGENEOUS solution: do nothing
-      case(0)
+      case(0,2)
 !        if(IBCflag.ne.3) then
 !          call hcurl_solution(X, E,dE,d2E)
 !          Imp_val(1) = E
 !        end if
 !
 !  ...exact solution known manufactured solution
-      case(1,2)
+      case(1)
         select case(IBCflag)
 !
 !  .....impedance BC

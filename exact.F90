@@ -83,11 +83,15 @@ subroutine exact(Xp,Mdle, ValH,DvalH,D2valH, ValE,DvalE,D2valE, &
 
  !  Efield.....value
   ValE(icomp,1    ) =   E
+  !ValE(1:3,1    ) =   E
 !
 !  .....1st order derivatives
   DvalE(icomp,1,1  ) =  dE(1)
   DvalE(icomp,1,2  ) =  dE(2)
   DvalE(icomp,1,3  ) =  dE(3)
+  ! DvalE(1:3,1,1  ) =  dE(1)
+  ! DvalE(1:3,1,2  ) =  dE(2)
+  ! DvalE(1:3,1,3  ) =  dE(3)
 !
 !  .....2nd order derivatives
   D2valE(icomp,1,1,1) = d2E(1,1)
@@ -99,6 +103,15 @@ subroutine exact(Xp,Mdle, ValH,DvalH,D2valH, ValE,DvalE,D2valE, &
   D2valE(icomp,1,3,1) = d2E(3,1)
   D2valE(icomp,1,3,2) = d2E(3,2)
   D2valE(icomp,1,3,3) = d2E(3,3)
+  ! D2valE(1:3,1,1,1) = d2E(1,1)
+  ! D2valE(1:3,1,1,2) = d2E(1,2)
+  ! D2valE(1:3,1,1,3) = d2E(1,3)
+  ! D2valE(1:3,1,2,1) = d2E(2,1)
+  ! D2valE(1:3,1,2,2) = d2E(2,2)
+  ! D2valE(1:3,1,2,3) = d2E(2,3)
+  ! D2valE(1:3,1,3,1) = d2E(3,1)
+  ! D2valE(1:3,1,3,2) = d2E(3,2)
+  ! D2valE(1:3,1,3,3) = d2E(3,3)
 !
 !     2nd H(curl) ATTRIBUTE = curl of the first attribute/-i omega \mu
 !
@@ -274,7 +287,7 @@ subroutine hcurl_solution(Xp, E,dE,d2E)
     real*8 :: cn,dn     ! for singular solution
     real*8 :: tn        ! for time step
     real*8 :: np_x,np_y,np_z,r0,k0,w0,phase,amplitude
-    real*8 :: impedanceConstant
+    real*8 :: impedanceConstant, om
     VTYPE :: f_x,f_y,f_z,df_x,df_y,df_z,ddf_x,ddf_y,ddf_z
     integer :: icomp
     VTYPE  :: c2z,uz,uz_x,uz_y,uz_z,uz_xx,uz_xy,uz_xz,uz_yy,uz_yx,uz_yz
@@ -339,19 +352,20 @@ subroutine hcurl_solution(Xp, E,dE,d2E)
 !  ...a smooth solution
       elseif (ISOL .eq. 2) then
 
-      f_x= sin(OMEGA*Xp(1))!dexp(-Xp(1)**2)/20.d0!sin(OMEGA*Xp(1))
-      f_y= sin(OMEGA*Xp(2))!dexp(-Xp(2)**2)/20.d0!sin(OMEGA*Xp(2))
-      f_z= sin(OMEGA*Xp(3))
+      om = OMEGA
+      f_x= sin(om*Xp(1))!dexp(-Xp(1)**2)/20.d0!sin(OMEGA*Xp(1))
+      f_y= sin(om*Xp(2))!dexp(-Xp(2)**2)/20.d0!sin(OMEGA*Xp(2))
+      f_z= sin(om*Xp(3))
 !
 !     1st order derivatives
-      df_x=(OMEGA)*cos(OMEGA*Xp(1))!-Xp(1)*dexp(-Xp(1)**2)/10.d0!(OMEGA)*cos(OMEGA*Xp(1))
-      df_y=(OMEGA)*cos(OMEGA*Xp(2))!-Xp(2)*dexp(-Xp(2)**2)/10.d0!(OMEGA)*cos(OMEGA*Xp(2))
-      df_z=(OMEGA)*cos(OMEGA*Xp(3))
+      df_x=(om)*cos(om*Xp(1))!-Xp(1)*dexp(-Xp(1)**2)/10.d0!(OMEGA)*cos(OMEGA*Xp(1))
+      df_y=(om)*cos(om*Xp(2))!-Xp(2)*dexp(-Xp(2)**2)/10.d0!(OMEGA)*cos(OMEGA*Xp(2))
+      df_z=(om)*cos(om*Xp(3))
 !
 !     2nd order derivatives
-      ddf_x=-OMEGA**2*f_x!dexp(-Xp(1)**2)*(2.d0*Xp(1)**2-1.d0)/10.d0!-OMEGA**2*f_x
-      ddf_y=-OMEGA**2*f_y!dexp(-Xp(2)**2)*(2.d0*Xp(2)**2-1.d0)/10.d0!-OMEGA**2*f_y
-      ddf_z=-OMEGA**2*f_z
+      ddf_x=-om**2*f_x!dexp(-Xp(1)**2)*(2.d0*Xp(1)**2-1.d0)/10.d0!-OMEGA**2*f_x
+      ddf_y=-om**2*f_y!dexp(-Xp(2)**2)*(2.d0*Xp(2)**2-1.d0)/10.d0!-OMEGA**2*f_y
+      ddf_z=-om**2*f_z
 
         !     an exponential
 
@@ -433,17 +447,17 @@ subroutine hcurl_solution(Xp, E,dE,d2E)
 
       f_x= Xp(1)*(1.d0-Xp(1))!dexp(-Xp(1)**2)/20.d0!sin(OMEGA*Xp(1))
       f_y= Xp(2)*(1.d0-Xp(2))!dexp(-Xp(2)**2)/20.d0!sin(OMEGA*Xp(2))
-      f_z= 1.d0!Xp(3)*(1.d0-Xp(3))
+      f_z= Xp(3)*(1.d0-Xp(3))
 !
 !     1st order derivatives
       df_x= 1.d0-2.d0*Xp(1)!-Xp(1)*dexp(-Xp(1)**2)/10.d0!(OMEGA)*cos(OMEGA*Xp(1))
       df_y=1.d0-2.d0*Xp(2)!-Xp(2)*dexp(-Xp(2)**2)/10.d0!(OMEGA)*cos(OMEGA*Xp(2))
-      df_z=ZERO!1.d0-2.d0*Xp(3)
+      df_z=(1.d0-2.d0*Xp(3))
 !
 !     2nd order derivatives
       ddf_x=-2.d0!dexp(-Xp(1)**2)*(2.d0*Xp(1)**2-1.d0)/10.d0!-OMEGA**2*f_x
       ddf_y=-2.d0!dexp(-Xp(2)**2)*(2.d0*Xp(2)**2-1.d0)/10.d0!-OMEGA**2*f_y
-      ddf_z=ZERO!-2.d0
+      ddf_z=-2.d0
 
         !     an exponential
 

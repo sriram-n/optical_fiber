@@ -809,12 +809,12 @@ subroutine elem_dpgMaxwell(Mdle,MdE,MdQ, &
   endif
 !
 ! ! !..............FOR LONG WAVEGUIDE: RE-USING STIFFNESS MATRICES
-! ! ...check if one needs to recompute element matrices
-!   idec=0
-!   call copy_element_matrices(MdE,MdQ,xnod,ibc, idec, &
-!                              ZalocEE,ZalocEQ, &
-!                              ZalocQE,ZalocQQ,ZblocE,ZblocQ)
-  if (idec.eq.1) return
+! ...check if one needs to recompute element matrices
+  ! idec=0
+  ! call copy_element_matrices(MdE,MdQ,xnod,ibc, idec, &
+  !                            ZalocEE,ZalocEQ, &
+  !                            ZalocQE,ZalocQQ,ZblocE,ZblocQ)
+  ! if (idec.eq.1) return
 ! !..............FOR LONG WAVEGUIDE: RE-USING STIFFNESS MATRICES
 ! ... get current solution dofs
   call solelm(Mdle, zdofH,zdofE,zdofV,zdofQ)
@@ -1062,8 +1062,8 @@ subroutine elem_dpgMaxwell(Mdle,MdE,MdQ, &
 ! ...boundary integrals
 !
   if(GEOM_NO.eq.1) then
-    impedanceConstant = sqrt(1.d0-(PI**2/OMEGA**2))
-    !impedanceConstant = 1.d0
+    !impedanceConstant = sqrt(1.d0-(PI**2/OMEGA**2))
+    impedanceConstant = 1.d0
   else
     impedanceConstant = 1.d0
   endif

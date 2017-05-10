@@ -36,7 +36,7 @@ program main
 !
 !                             option label      // explanation                // default value     // parameter
       call get_option_string( '-file-control'    , 'Control file'              , './files/control'  , FILE_CONTROL)
-      call get_option_string( '-file-geometry'   , 'Geometry file'             , './files/cube_waveguide8', FILE_GEOM   )
+      call get_option_string( '-file-geometry'   , 'Geometry file'             , './files/cube', FILE_GEOM   )
       call get_option_string( '-file-phys'       , 'Physics file'              , './files/physics'  , FILE_PHYS   )
       call get_option_string( '-file-refinement' , 'Refinement files location' , '../../files/ref'  , FILE_REFINE )
       call get_option_string( '-file-history'    , 'History file'              , './files/history'  , FILE_HISTORY)
@@ -61,22 +61,22 @@ program main
       call get_option_int(    '-orderx'             , 'NPX'                       , 2                  , NPX         )
       call get_option_int(    '-ordery'             , 'NPY'                       , 1                  , NPY         )
       call get_option_int(    '-orderz'             , 'NPZ'                       , 0                  , NPZ         )
-      call get_option_int(    '-iSol'               , 'iSol'                      , 50                  , ISOL        )
+      call get_option_int(    '-isol'               , 'iSol'                      , 50                  , ISOL        )
       call get_option_int(    '-problem'            , 'NO_PROBLEM'                , 3                  , NO_PROBLEM  )
       call get_option_int(    '-geometry-no'        , 'Geometry file number'      , 1                  , GEOM_NO     )
       call get_option_int(    '-inner-product'      , 'INNER_PRODUCT'             , 1                  , INNER_PRODUCT)
       call get_option_real(   '-kappa'              , 'kappa'                     , 1.d0               , KAPPA       )
-      call get_option_real(   '-deltaT'             , 'deltaT'                    , 0.1d0              , DELTAT      )
-      call get_option_real(   '-Tmax'               , 'Tmax'                      , 1.0d0              , TMAX        )
+      call get_option_real(   '-deltat'             , 'deltaT'                    , 0.1d0              , DELTAT      )
+      call get_option_real(   '-tmax'               , 'Tmax'                      , 1.0d0              , TMAX        )
       call get_option_int(    '-comp'               , 'ICOMP_EXACT'               , 1                  , ICOMP_EXACT )
-      call get_option_int(    '-laserMode'          , 'LASER_MODE'                , 0                  , LASER_MODE  )
+      call get_option_int(    '-lasermode'          , 'LASER_MODE'                , 0                  , LASER_MODE  )
 !
       call get_option_real(   '-mu'                 , 'MU'                        , 1.d0               , MU          )
       call get_option_real(   '-epsilon'            , 'EPSILON'                   , 1.d0               , EPSILON     )
       call get_option_real(   '-sigma'              , 'SIGMA'                     , 0.d0               , SIGMA       )
 !
 !  ...single cube problem: do not forget to reset the flag in the control file
-      call get_option_real(   '-omega'              , 'OMEGA'                     , PI*1.50d0          , OMEGA        )
+      call get_option_real(   '-omega'              , 'OMEGA'                     , 1.d0          , OMEGA        )
       call get_option_real(   '-waist'              , 'BEAM_WAIST'                , 1.0d0               , BEAM_WAIST  )
       call get_option_int(    '-ibc'                , 'IBCFlag'                   , 0                  , IBCFlag     )
       call get_option_int(    '-nlflag'             , 'NONLINEAR_FLAG'            , 0                  , NONLINEAR_FLAG)
@@ -164,6 +164,7 @@ program main
         write(*,*) '                                         '
         write(*,*) 'Uniform refinments rate tests.........140'
         write(*,*) 'Uniform geometry error rate tests.....141'
+        write(*,*) '1 uniform n anisotropic refinements...142'
         write(*,*) 'My tests..... ........................200'
         write(*,*) 'Test gain function....................201'
         write(*,*) '=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-='
@@ -571,7 +572,40 @@ program main
           Ehat = 1.d0/real(i,8)
           call get_gainFunction(Ehat, gainF)
         enddo
-
+! ......... 1 uniform n anisotropic refinements and solve
+        case(142)
+        write(*,*) '1 uniform n anisotropic refinements and solve'
+!  ........ Get #refinements to be done
+        write(*,*) 'Enter number of anisotropic H-refinements:'
+        read(*,*) numRef
+!  .......set variables to solve for
+            PHYSAm(1:4) = (/.false.,.true.,.false.,.true./)
+!  .......set problem #
+            NO_PROBLEM = 3
+        info = 0
+!  ........ Set error flags
+        iflag(4) = 1; iflag(1:3) = 0; itag=1
+        call global_href
+        !call close_mesh
+        call update_gdof
+        call update_Ddof
+        call mumps_sc_3D
+        write(*,*) 'after one uniform refinement'
+        call compute_error(iflag,itag)
+          iref = 0
+          do while(iref.lt.numRef)
+!  ........ Do anisotropic h-refinements
+            ref_xyz=2
+            call setAnisoRef(info,ref_xyz, info)
+            call update_gdof
+            call update_Ddof
+! ........... solve
+            call mumps_sc_3D
+!  ........ Compute error
+            write(*,*) 'after anisotropic refinement'
+            call compute_error(iflag,itag)
+            iref = iref+1
+          enddo
 
 
 !
