@@ -230,7 +230,7 @@ subroutine elem_dpgHeat(Mdle,MdH,MdV, &
 ! .... for Gram matrix
   integer      :: nk
 ! ..... various variables for the problem
-  real*8  :: h_elem,rjac,weight,wa,v2n,v1,v2,bjac
+  real*8  :: h_elem,rjac,weight,wa,v2n,v1,v2,bjac,gainFunction,EfieldNorm
   integer :: i1,i2,j1,j2,k1,k2,kH,kk,i,j,nrTEST,nint,iflag,kE,k,iprint
   integer :: N,nRHS,nordP,l,nsign,if,ndom,info
   VTYPE   :: zfval,zsolH
@@ -360,12 +360,17 @@ subroutine elem_dpgHeat(Mdle,MdH,MdV, &
       zsolH = zsolH + zdofH(1,kH)*shapH(kH)
     enddo
 ! .....compute the Hcurl solution at the point if LASER_MOD
+    !if((LASER_MODE.eq.1).or.(NONLINEAR_FLAG.eq.1))then
     if(LASER_MODE.eq.1) then
       zsolQ = ZERO
         do kE=1,nrdofQ
           zsolQ(1:6) = zsolQ(1:6) + zdofQ(1:6,kE)*shapQ(kE)
         enddo
     endif
+    EfieldNorm = abs(zsolQ(1))**2+abs(zsolQ(2))**2+abs(zsolQ(3))**2
+    EfieldNorm = dsqrt(EfieldNorm)
+    call get_gainFunction(EfieldNorm, gainFunction)
+
 !
 ! .....integration weight
     weight = rjac*wa
@@ -387,9 +392,10 @@ subroutine elem_dpgHeat(Mdle,MdH,MdV, &
         case(1)
           BLOADH(k1) = BLOADH(k1) + zfval*v1*weight
         case(2)
+!          if((LASER_MODE.eq.1).or.(NONLINEAR_FLAG.eq.1)) then
           if(LASER_MODE.eq.1) then
             zfval = DELTAT*((zsolQ(1)**2+zsolQ(2)**2 &
-                    +zsolQ(3)**2)**0.5+1.d0)
+                    +zsolQ(3)**2)*REF_INDEX_CORE*gainFunction)
           endif
           BLOADH(k1) = BLOADH(k1) + (zfval+zsolH)*v1*weight
       end select
@@ -869,8 +875,8 @@ subroutine elem_dpgMaxwell(Mdle,MdE,MdQ, &
 !
   omeg = OMEGA
 ! ...auxiliary constant1
-  za = ZI*omeg*bg_gain*EPSILON + SIGMA
   zb = ZI*omeg*bg_gain*EPSILON - SIGMA
+  za = ZI*omeg*bg_gain*EPSILON + SIGMA
   zc = ZI*omeg*MU
 
 !
@@ -920,8 +926,8 @@ subroutine elem_dpgMaxwell(Mdle,MdE,MdQ, &
 ! ...  evaluate ion_gain = REF_INDEX*gainFunction = sqrt(bg_gain)*gainFunction
         ion_gain = sqrt(bg_gain)*gainFunction
 ! ...  evaluate auxiliary constant1
-        zb = ZI*OMEGA*bg_gain*EPSILON + ion_gain*SIGMA
-        za = ZI*OMEGA*bg_gain*EPSILON - ion_gain*SIGMA
+        zb = ZI*OMEGA*bg_gain*EPSILON - ion_gain-SIGMA
+        za = ZI*OMEGA*bg_gain*EPSILON + ion_gain+SIGMA
 ! ...... end if for NONLINEAR FLAG check
         endif
 ! ...... end select for checking core domain number
@@ -947,7 +953,7 @@ subroutine elem_dpgMaxwell(Mdle,MdE,MdQ, &
       do kH=1,nrdofH
         zsolH = zsolH + zdofH(1,kH)*shapH(kH)
       enddo
-        alpha_scale = 2.d0*zsolH
+        alpha_scale = 2.d0*zsolH+1.d0
     endif
 
 ! .....integration weight
@@ -994,18 +1000,22 @@ subroutine elem_dpgMaxwell(Mdle,MdE,MdQ, &
 ! .........accumulate for the test Gram matrix: adjoint graph
       k = nk(2*k1-1,2*k2-1)
       AP_Maxwell(k) = AP_Maxwell(k) &
-                   + (CC+ (abs(ZI*OMEGA*EPSILON-SIGMA)**2 + 1.d0)*EE)*weight
+                   + (CC+ (abs(zb)**2 + 1.d0)*EE)*weight
+!                   + (CC+ (abs(ZI*OMEGA*EPSILON-SIGMA)**2 + 1.d0)*EE)*weight
       k = nk(2*k1-1,2*k2  )
       AP_Maxwell(k) = AP_Maxwell(k) &
-                  + (ZI*OMEGA*MU*CE + (ZI*OMEGA*EPSILON-SIGMA)*EC)*weight
+                  + (zc*CE + (zb)*EC)*weight
+                  !+ (ZI*OMEGA*MU*CE + (ZI*OMEGA*EPSILON-SIGMA)*EC)*weight
       if (k1.ne.k2) then
         k = nk(2*k1  ,2*k2-1)
         AP_Maxwell(k) = AP_Maxwell(k) &
-                    + (conjg(ZI*OMEGA*EPSILON-SIGMA)*CE -ZI*OMEGA*MU*EC)*weight
+                    + (conjg(zb)*CE -zc*EC)*weight
+                    !+ (conjg(ZI*OMEGA*EPSILON-SIGMA)*CE -ZI*OMEGA*MU*EC)*weight
       endif
       k = nk(2*k1  ,2*k2  )
       AP_Maxwell(k) = AP_Maxwell(k) &
-                + (CC+ ((abs(ZI*OMEGA*MU))**2 + 1.d0)*EE)*weight
+                + (CC+ ((abs(zc))**2 + 1.d0)*EE)*weight
+                !+ (CC+ ((abs(ZI*OMEGA*MU))**2 + 1.d0)*EE)*weight
 ! ! .........accumulate for the test Gram matrix: mathematicians norm
 !       k = nk(2*k1-1,2*k2-1)
 !       AP_Maxwell(k) = AP_Maxwell(k) &
@@ -1029,7 +1039,7 @@ subroutine elem_dpgMaxwell(Mdle,MdE,MdQ, &
                  +zc*E1(icomp)*q*weight
           k = (k2-1)*6 + icomp
           STIFFEQ(2*k1  ,k) = STIFFEQ(2*k1  ,k) &
-               -(zb)*alpha_scale*E1(icomp)*q*weight
+               -(za)*alpha_scale*E1(icomp)*q*weight
           k = (k2-1)*6 + 3+ icomp
           STIFFEQ(2*k1  ,k) = STIFFEQ(2*k1  ,k) &
                + curlE1(icomp)*q*weight
@@ -1063,9 +1073,9 @@ subroutine elem_dpgMaxwell(Mdle,MdE,MdQ, &
 !
   if(GEOM_NO.eq.1) then
     !impedanceConstant = sqrt(1.d0-(PI**2/OMEGA**2))
-    impedanceConstant = 1.d0
+    impedanceConstant = GAMMA_IMP
   else
-    impedanceConstant = 1.d0
+    impedanceConstant = GAMMA_IMP
   endif
 ! ...loop through element faces
   do if=1,nrf
@@ -1115,7 +1125,7 @@ subroutine elem_dpgMaxwell(Mdle,MdE,MdQ, &
       !write(*,*) 'putting impedance BCs'
 !
 ! .........get the boundary source
-      call get_bdSource(Mdle,x,rn,IBCFlag, zImp)
+      call get_bdSource(Mdle,x,rn, zImp)
 !
 ! .........loop through Hcurl enriched test functions
       do k1=1,nrdofEE
@@ -1160,7 +1170,7 @@ subroutine elem_dpgMaxwell(Mdle,MdE,MdQ, &
 !
     if(LASER_MODE.eq.1) then
 ! .........get the boundary source
-      call get_bdSource(Mdle,x,rn,0, zImp)
+      !call get_bdSource(Mdle,x,rn,0, zImp)
     else
       zImp = ZERO
     end if
@@ -1438,6 +1448,16 @@ subroutine elem_dpgMaxwell(Mdle,MdE,MdQ, &
  ! call copy_element_matrices(MdE,MdQ,xnod,ibc, idec, &
  !                            ZalocEE,ZalocEQ, &
  !                            ZalocQE,ZalocQQ,ZblocE,ZblocQ)
+ ! write(*,*)'ZalocEE is: ', ZalocEE(1:MdE,1:MdE)
+ ! write(*,*) '   '
+ ! write(*,*)'ZalocEQ is: ', ZalocEE(1:MdE,1:MdQ)
+ ! write(*,*) '   '
+ ! write(*,*)'ZalocQE is: ', ZalocEE(1:MdQ,1:MdE)
+ ! write(*,*) '   '
+ ! write(*,*)'ZalocQQ is: ', ZalocEE(1:MdQ,1:MdQ)
+ ! write(*,*) '   '
+ ! call pause
+
 
   if (iprint.ge.1) then
     write(*,7010)
@@ -1538,7 +1558,6 @@ subroutine copy_element_matrices(MdE,MdQ,Xnod,ibc, Idec, &
   integer  :: Idec
 !
   integer :: iprint,i,checkIBC,j
-  checkIBC = 0
 !
   iprint=1
 !
@@ -1550,9 +1569,6 @@ subroutine copy_element_matrices(MdE,MdQ,Xnod,ibc, Idec, &
       do j=1,6
         if(ibc(j,2).eq.9) then
           write(*,*) 'ibc is imposed'
-        !  checkIBC = checkIBC+1
-        !endif
-        !if(checkIBC.eq.5) then
           Idec = 2
           return
         endif
@@ -1563,37 +1579,25 @@ subroutine copy_element_matrices(MdE,MdQ,Xnod,ibc, Idec, &
         if ((abs(Xnod(1,1)-XYVERT(1,i)).lt.GEOM_TOL).and. &
             (abs(Xnod(2,1)-XYVERT(2,i)).lt.GEOM_TOL)) go to 10
       enddo
-      !write(*,*) 'copy_element_matrices: NRFL is: ', NRFL
-      !write(*,*) 'copy_elniement_matrices: Xnod(1:3,1) is: ', Xnod(1:2,1)
-      !write(*,*) 'i is ', i
-      !write(*,*) 'copy_element_matrices: XYVERT(1:2,i) is: ', XYVERT(1:2,i)
 !
 ! ....no element with this position has been computed yet
       Idec=2; return
 !
 ! ....element matrices have been computed
 10    Idec=1
-      ! if (checkIBC.eq.1) then
-      !   Idec=2
-      !   return
-      ! endif
-!
       write(*,*) 'not computing the stiffness matrices!'
-      !write(*,*) 'copy_element_matrices: NRFL is: ', NRFL
-      !write(*,*) 'copy_element_matrices: Xnod(1:3,1) is: ', Xnod(1:2,1)
-      !write(*,*) 'i is ', i
-      !write(*,*) 'copy_element_matrices: XYVERT(1:2,i) is: ', XYVERT(1:2,i)
 ! ....copy the element matrices from the temporary data structure
       ZalocEE(1:MdE,1:MdE) = ZFL_EE(1:MdE,1:MdE,i)
       ZalocEQ(1:MdE,1:MdQ) = ZFL_EQ(1:MdE,1:MdQ,i)
       ZalocQQ(1:MdQ,1:MdQ) = ZFL_QQ(1:MdQ,1:MdQ,i)
+      ZalocQE(1:MdQ,1:MdE) = ZFL_QE(1:MdQ,1:MdE,i)
       ZblocE(1:MdE) = ZLOADFL_E(1:MdE,i)
       ZblocQ(1:MdQ) = ZLOADFL_Q(1:MdQ,i)
 !
 ! ....finish generating the matrices
-      do i=1,MdQ
-        ZalocQE(i,1:MdE) = conjg(ZalocEQ(1:MdE,i))
-      enddo
+      ! do i=1,MdQ
+      !   ZalocQE(i,1:MdE) = conjg(ZalocEQ(1:MdE,i))
+      ! enddo
       return
 !
 ! ..store the element matrices
@@ -1602,8 +1606,6 @@ subroutine copy_element_matrices(MdE,MdQ,Xnod,ibc, Idec, &
 ! ....store first vertex node xy coordinates
       NRFL=NRFL+1
       if (NRFL.gt.MAXNRFL) then
-        !write(*,*) 'copy_element_matrices: NRFL is: ', NRFL
-        !write(*,*) 'copy_element_matrices: Xnod(1:3,1) is: ', Xnod(1:3,1)
         write(*,*) 'copy_element_matrices: INCREASE MAXNRFL'
         stop 1
       endif
@@ -1612,6 +1614,7 @@ subroutine copy_element_matrices(MdE,MdQ,Xnod,ibc, Idec, &
 ! ....copy the element matrices from the temporary data structure
       ZFL_EE(1:MdE,1:MdE,NRFL) = ZalocEE(1:MdE,1:MdE)
       ZFL_EQ(1:MdE,1:MdQ,NRFL) = ZalocEQ(1:MdE,1:MdQ)
+      ZFL_QE(1:MdQ,1:MdE,NRFL) = ZalocQE(1:MdQ,1:MdE)
       ZFL_QQ(1:MdQ,1:MdQ,NRFL) = ZalocQQ(1:MdQ,1:MdQ)
       ZLOADFL_E(1:MdE,NRFL) =  ZblocE(1:MdE)
       ZLOADFL_Q(1:MdQ,NRFL) = ZblocQ(1:MdQ)

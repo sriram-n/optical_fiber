@@ -60,19 +60,12 @@ subroutine dirichlet(Mdle,X,Icase, ValH,DvalH, ValE,DvalE, ValV,DvalV)
         select case(NO_PROBLEM)
 !        Solving Maxwell problem with loading on one end of fiber
         case(3)
+          if(ISOL.ne.9) then
+            write(*,*)'dirichlet: error! ISOL must be 9 if running UNKNOWN solution'
+            stop
+          endif
           call exact(X,Mdle, ValH,DvalH,d2valH, ValE,DvalE,d2valE,  &
                          ValV,DvalV,d2valV, valQ,dvalQ,d2valQ)
-          ! if (X(3).eq.0.d0) then
-          !   if((X(1).le.1.d0).and.(X(2).le.1.d0)) then
-          !   ISOL = 8
-          !   call exact(X,Mdle, ValH,DvalH,d2valH, ValE,DvalE,d2valE,  &
-          !               ValV,DvalV,d2valV, valQ,dvalQ,d2valQ)
-          !   else
-          !   ISOL = 7
-          !   call exact(X,Mdle, ValH,DvalH,d2valH, ValE,DvalE,d2valE,  &
-          !               ValV,DvalV,d2valV, valQ,dvalQ,d2valQ)
-          !   endif
-          ! endif
         end select
 !
 !     exact solution KNOWN

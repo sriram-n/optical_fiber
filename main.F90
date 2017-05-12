@@ -48,7 +48,7 @@ program main
 !                        option label     // explanation                        // default value     // parameter
       call get_option_string('-file-vis-upscale','Visualization upscale file location','../../files/vis',FILE_VIS          )
       call get_option_string('-vis-level'       ,'Visualization upscale level (0-3)'  ,'2'                 ,VLEVEL            )
-      call get_option_string('-dir-paraview'    ,'Paraview root directory'            ,'./output/figures/test/' ,PARAVIEW_DIR      )
+      call get_option_string('-dir-paraview'    ,'Paraview root directory'            ,'./output/figures/test2/' ,PARAVIEW_DIR      )
       call get_option_bool(  '-paraview-geom'   ,'Dump geom at every Paraview call'   ,.TRUE.              ,PARAVIEW_DUMP_GEOM)
       call get_option_bool(  '-paraview-attr'   ,'Dump solution to Paraview'          ,.TRUE.              ,PARAVIEW_DUMP_ATTR)
 !
@@ -56,19 +56,19 @@ program main
 !     read in problem dependent parameters (defined in module parametersDPG)
 !
 !                              option label      // explanation                // default value     // parameter
-      call get_option_int(    '-nord-add'           , 'NORD_ADD'                  , 2                  , NORD_ADD    )
+      call get_option_int(    '-nord-add'           , 'NORD_ADD'                  , 1                  , NORD_ADD    )
       call get_option_int(    '-order-approx'       , 'ORDER_APPROX'              , 3                  , ORDER_APPROX)
       call get_option_int(    '-orderx'             , 'NPX'                       , 2                  , NPX         )
       call get_option_int(    '-ordery'             , 'NPY'                       , 1                  , NPY         )
       call get_option_int(    '-orderz'             , 'NPZ'                       , 0                  , NPZ         )
-      call get_option_int(    '-isol'               , 'iSol'                      , 50                  , ISOL        )
+      call get_option_int(    '-isol'               , 'iSol'                      , 8                  , ISOL        )
       call get_option_int(    '-problem'            , 'NO_PROBLEM'                , 3                  , NO_PROBLEM  )
       call get_option_int(    '-geometry-no'        , 'Geometry file number'      , 1                  , GEOM_NO     )
       call get_option_int(    '-inner-product'      , 'INNER_PRODUCT'             , 1                  , INNER_PRODUCT)
       call get_option_real(   '-kappa'              , 'kappa'                     , 1.d0               , KAPPA       )
       call get_option_real(   '-deltat'             , 'deltaT'                    , 0.1d0              , DELTAT      )
       call get_option_real(   '-tmax'               , 'Tmax'                      , 1.0d0              , TMAX        )
-      call get_option_int(    '-comp'               , 'ICOMP_EXACT'               , 1                  , ICOMP_EXACT )
+      call get_option_int(    '-comp'               , 'ICOMP_EXACT'               , 3                  , ICOMP_EXACT )
       call get_option_int(    '-lasermode'          , 'LASER_MODE'                , 0                  , LASER_MODE  )
 !
       call get_option_real(   '-mu'                 , 'MU'                        , 1.d0               , MU          )
@@ -77,16 +77,21 @@ program main
 !
 !  ...single cube problem: do not forget to reset the flag in the control file
       call get_option_real(   '-omega'              , 'OMEGA'                     , 1.d0          , OMEGA        )
-      call get_option_real(   '-waist'              , 'BEAM_WAIST'                , 1.0d0               , BEAM_WAIST  )
+      call get_option_real(   '-gamma'              , 'GAMMA_IMP'                 , 1.0d0             , GAMMA_IMP    )
+      call get_option_real(   '-waist'              , 'BEAM_WAIST'                , 0.50d0             , BEAM_WAIST   )
       call get_option_int(    '-ibc'                , 'IBCFlag'                   , 0                  , IBCFlag     )
       call get_option_int(    '-nlflag'             , 'NONLINEAR_FLAG'            , 0                  , NONLINEAR_FLAG)
       call get_option_real(   '-ntheta'             , 'NTHETA'                    , 1.d0               , NTHETA      )
+      !GAMMA_IMP = dsqrt(1.d0-(PI**2/OMEGA**2))
+      GAMMA_IMP = 0.50d0
 !
+!aZyUta1!
 !     finalize
       call end_environment
 
       !Number of time steps for Heat equation NSTEPS = TMAX/DELTAT
       NSTEPS = int(TMAX/DELTAT)
+      NSTEPS = 1
 
       ! set LASER_MODE = 0
       !LASER_MODE = 0
@@ -164,7 +169,7 @@ program main
         write(*,*) '                                         '
         write(*,*) 'Uniform refinments rate tests.........140'
         write(*,*) 'Uniform geometry error rate tests.....141'
-        write(*,*) '1 uniform n anisotropic refinements...142'
+        write(*,*) '2 uniform n anisotropic refinements...142'
         write(*,*) 'My tests..... ........................200'
         write(*,*) 'Test gain function....................201'
         write(*,*) '=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-='
@@ -334,6 +339,8 @@ program main
           PHYSAm(1:4) = (/.true.,.false.,.true.,.false./)
 !  .......set problem #
           NO_PROBLEM = 2
+          !call update_gdof
+          !call update_ddof
 !  .......use the preset final time and time step
           do itime=1,NSTEPS
           call mumps_interf(MY_NR_RHS)
@@ -349,6 +356,8 @@ program main
             PHYSAm(1:4) = (/.false.,.true.,.false.,.true./)
 !  .......set problem #
             NO_PROBLEM = 3
+            !call update_gdof
+            !call update_ddof
             call uhm_time_in
             !call mumps_interf(MY_NR_RHS)
             call mumps_sc_3D
@@ -365,15 +374,21 @@ program main
             PHYSAm(1:4) = (/.false.,.true.,.false.,.true./)
 !  .......set problem #
             NO_PROBLEM = 3
+            !call update_gdof
+            !call update_ddof
             nLaser = 0
-            nonlin_steps = 5
+            nonlin_steps = 2
             do nLaser =1,nonlin_steps
               call uhm_time_in
               call mumps_sc_3D
               !call mumps_interf(MY_NR_RHS)
               call uhm_time_out(t)
               write(*,*) 'time mumps = ', t
+            call update_gdof
+            call update_ddof
             enddo
+            call update_gdof
+            call update_ddof
           endif
 
 !  .....full Laser problem
@@ -394,9 +409,10 @@ program main
   !
   !  .......set problem #
             NO_PROBLEM = 3
-            !call update_gdof
-            !call update_ddof
-            call mumps_interf(MY_NR_RHS)
+            call update_gdof
+            call update_ddof
+            !call mumps_interf(MY_NR_RHS)
+            call mumps_sc_3D
             !call mumps_solve_seq(MY_NR_RHS)
 
 
@@ -407,11 +423,12 @@ program main
   !  .......set problem #
             NO_PROBLEM = 2
   !
-            !call update_gdof
-            !call update_ddof
+            call update_gdof
+            call update_ddof
   !  .......use the preset final time and time step
             do itime=1,NSTEPS
-              call mumps_interf(MY_NR_RHS)
+              !call mumps_interf(MY_NR_RHS)
+              call mumps_sc_3D
               !call mumps_solve_seq(MY_NR_RHS)
             enddo
           enddo
@@ -574,7 +591,7 @@ program main
         enddo
 ! ......... 1 uniform n anisotropic refinements and solve
         case(142)
-        write(*,*) '1 uniform n anisotropic refinements and solve'
+        write(*,*) '2 uniform n anisotropic refinements and solve'
 !  ........ Get #refinements to be done
         write(*,*) 'Enter number of anisotropic H-refinements:'
         read(*,*) numRef
@@ -591,6 +608,14 @@ program main
         call update_Ddof
         call mumps_sc_3D
         write(*,*) 'after one uniform refinement'
+        call compute_error(iflag,itag)
+
+        call global_href
+        !call close_mesh
+        call update_gdof
+        call update_Ddof
+        call mumps_sc_3D
+        write(*,*) 'after 2 uniform refinement'
         call compute_error(iflag,itag)
           iref = 0
           do while(iref.lt.numRef)

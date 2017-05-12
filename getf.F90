@@ -130,19 +130,19 @@ endsubroutine getf
 
 
 
-subroutine get_bdSource(Mdle,X,Rn,IBCFlag, Imp_val)
+subroutine get_bdSource(Mdle,X,Rn, Imp_val)
 !
       use control          , only : NEXACT
       use assembly         , only : NR_RHS
       use data_structure3D , only : NR_COMP,ADRES,NRINDEX
       use parameters       , only : MAXEQNH,MAXEQNE,MAXEQNV,MAXEQNQ,ZERO
-      use problem          , only : ZI,MU,EPSILON,SIGMA,OMEGA,PI,GEOM_NO
+      use problem
 !
       implicit none
       integer,                  intent(in)  :: Mdle
       real*8,dimension(3),      intent(in)  :: X
       real*8,dimension(3),      intent(in)  :: Rn
-      integer,                  intent(in)  :: IBCFlag
+      !integer,                  intent(in)  :: IBCFlag
       VTYPE,dimension(3),       intent(out) :: Imp_val
 !------------------------------------------------------------------------------
 !
@@ -186,22 +186,18 @@ subroutine get_bdSource(Mdle,X,Rn,IBCFlag, Imp_val)
       Imp_val = ZERO
       if(GEOM_NO.eq.1) then
         !impedanceConstant = sqrt(1.d0-(PI**2/OMEGA**2))
-        impedanceConstant = 1.d0
+        impedanceConstant = GAMMA_IMP
       else
-        impedanceConstant = 1.d0
+        impedanceConstant = GAMMA_IMP
       endif
 !
       select case(NEXACT)
 !  ... known HOMOGENEOUS solution: do nothing
       case(0,2)
-!        if(IBCflag.ne.3) then
-!          call hcurl_solution(X, E,dE,d2E)
-!          Imp_val(1) = E
-!        end if
 !
 !  ...exact solution known manufactured solution
       case(1)
-        select case(IBCflag)
+        select case(IBCFlag)
 !
 !  .....impedance BC
         case(3)

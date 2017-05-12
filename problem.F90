@@ -35,7 +35,7 @@ module problem
   double precision :: KAPPA, DELTAT, TMAX, HEAT_LOAD
 
 ! ...Maxwell equation parameters
-  double precision :: OMEGA, BEAM_WAIST
+  double precision :: OMEGA, BEAM_WAIST, GAMMA_IMP
 !  ...material constants
   double precision :: MU, NTHETA
   double precision :: EPSILON
@@ -64,7 +64,7 @@ module problem
   double precision, parameter :: OMEGA_RATIO = 1064.d0/976.d0
   double precision, parameter :: INTENSITY_RATIO = sqrt(25.d0/ &
                                              (1000.d0))
-  double precision, parameter :: I_INC = 1000/(3.14159*CORE_RAD**2)
+  double precision, parameter :: I_INC = 1000.d0/(3.14159*CORE_RAD**2)
   double precision, parameter :: E_INC = sqrt(I_INC*MU0*LIGHT_SPEED &
                                                   /REF_INDEX_CORE)
   double precision, parameter :: E_0 = INTENSITY_RATIO*E_INC

@@ -303,7 +303,7 @@ subroutine hcurl_solution(Xp, E,dE,d2E)
     df_x = ZERO; df_y = ZERO; df_z = ZERO
     ddf_x = ZERO; ddf_y = ZERO; ddf_z = ZERO
     !
-    impedanceConstant = 1.d0
+    impedanceConstant = GAMMA_IMP
 
     ! !
     ! !-----------------------------------------------------------------------------------
@@ -425,8 +425,6 @@ subroutine hcurl_solution(Xp, E,dE,d2E)
 
       !  ...fundamental TE10 mode for rectangular waveguide
       elseif (ISOL .eq. 6) then
-      impedanceConstant = sqrt(1.d0-(PI**2/OMEGA**2))
-      !impedanceConstant = 0.25d0
       f_x=-ZI*(OMEGA/PI)*sin(PI*Xp(1))
       f_y= 1.d0
       f_z=cdexp(-ZI*OMEGA*Xp(3)*impedanceConstant)
@@ -447,12 +445,12 @@ subroutine hcurl_solution(Xp, E,dE,d2E)
 
       f_x= Xp(1)*(1.d0-Xp(1))!dexp(-Xp(1)**2)/20.d0!sin(OMEGA*Xp(1))
       f_y= Xp(2)*(1.d0-Xp(2))!dexp(-Xp(2)**2)/20.d0!sin(OMEGA*Xp(2))
-      f_z= Xp(3)*(1.d0-Xp(3))
+      f_z= Xp(3)*(128.d0-Xp(3))
 !
 !     1st order derivatives
       df_x= 1.d0-2.d0*Xp(1)!-Xp(1)*dexp(-Xp(1)**2)/10.d0!(OMEGA)*cos(OMEGA*Xp(1))
       df_y=1.d0-2.d0*Xp(2)!-Xp(2)*dexp(-Xp(2)**2)/10.d0!(OMEGA)*cos(OMEGA*Xp(2))
-      df_z=(1.d0-2.d0*Xp(3))
+      df_z=(128.d0-2.d0*Xp(3))
 !
 !     2nd order derivatives
       ddf_x=-2.d0!dexp(-Xp(1)**2)*(2.d0*Xp(1)**2-1.d0)/10.d0!-OMEGA**2*f_x
@@ -487,24 +485,25 @@ subroutine hcurl_solution(Xp, E,dE,d2E)
 !.... beam waist
           w0 = BEAM_WAIST
           k0 = OMEGA
-          c2z = w0**2 + ZI*2.d0*Xp(3)/k0
-          r0 = dsqrt(Xp(1)**2+Xp(2)**2)
+          c2z = w0**2
+          x1 = Xp(1)-0.5d0
+          x2 = Xp(2)-0.5d0
+          r0 = dsqrt((x1)**2+(x2)**2)
           uz = cdexp(ZI*k0*Xp(3))*cdexp(-r0**2/c2z)/c2z
     !
-          uz_x = -2.d0*Xp(1)*uz
-          uz_y = -2.d0*Xp(2)*uz
-          uz_z = uz*(ZI*k0+(2.d0/k0)*ZI*(r0/c2z)**2-2.d0*ZI/(k0*c2z))
+          uz_x = -2.d0*x1*uz/c2z
+          uz_y = -2.d0*x2*uz/c2z
+          uz_z = uz*(ZI*k0)
     !
-          uz_xx = -2.d0*(uz+Xp(1)*uz_x)
-          uz_xy = -2.d0*Xp(1)*uz_y
-          uz_xz = -2.d0*Xp(1)*uz_z
+          uz_xx = -2.d0*(uz+x1*uz_x)/c2z
+          uz_xy = -2.d0*x1*uz_y/c2z
+          uz_xz = -2.d0*x1*uz_z/c2z
 
-          uz_yy = -2.d0*(uz+Xp(2)*uz_y)
+          uz_yy = -2.d0*(uz+x2*uz_y)/c2z
           uz_yx = uz_xy
-          uz_yz = -2.d0*Xp(2)*uz_z
+          uz_yz = -2.d0*x2*uz_z/c2z
 
-          uz_zz = uz_z*(ZI*k0+(2.d0/k0)*ZI*(r0/c2z)**2-2.d0*ZI/(k0*c2z)) &
-                + uz*(-4.d0/((k0*c2z)**2)+6.d0*(c2z**3)*(r0/k0)**2)
+          uz_zz = uz_z*ZI*k0
           uz_zx = uz_xz
           uz_zy = uz_yz
 
@@ -592,20 +591,20 @@ subroutine hcurl_solution(Xp, E,dE,d2E)
           uz_zy = uz_yz
 
 !.... plane wave parameters
-          phase = Xp(3)+Xp(2)+Xp(1)
+          phase = Xp(3)
           amplitude = INTENSITY_RATIO**-2
           pz = amplitude*exp(-ZI*OMEGA*phase)
-          pz_x = -pz*ZI*OMEGA
-          pz_y = -pz*ZI*OMEGA
+          pz_x = ZERO
+          pz_y = ZERO
           pz_z = -pz*ZI*OMEGA
-          pz_xx = -pz*OMEGA**2
-          pz_xy = -pz*OMEGA**2
-          pz_xz = -pz*OMEGA**2
-          pz_yx = -pz*OMEGA**2
-          pz_yy = -pz*OMEGA**2
-          pz_yz = -pz*OMEGA**2
-          pz_zx = -pz*OMEGA**2
-          pz_zy = -pz*OMEGA**2
+          pz_xx = ZERO
+          pz_xy = ZERO
+          pz_xz = ZERO
+          pz_yx = ZERO
+          pz_yy = ZERO
+          pz_yz = ZERO
+          pz_zx = ZERO
+          pz_zy = ZERO
           pz_zz = -pz*OMEGA**2
 !       Check if on the launching end of fiber
         if((Xp(3).eq.0.d0)) then
