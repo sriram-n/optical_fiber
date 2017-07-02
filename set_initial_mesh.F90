@@ -67,37 +67,68 @@
 			  end if
 			  end select
 
-	!  ..... fiber core prism
+!  ..... fiber core prism -- modified input
 			case (2)
 			call domain_number(iel, ndom)
 			  write(*,*) 'GEOM_NO = ', GEOM_NO
-			  ibc(1:6,1) = (/1,1,0,1,0,0/)
+			  ibc(1:6,1) = (/1,1,1,0,0,0/)
 		      if(IBCFlag.eq.3) then
-                ibc(1:6,2) = (/6,9,0,6,0,0/)
+                ibc(1:6,2) = (/6,9,6,0,0,0/)
 		      else
-  			    ibc(1:6,2) = (/6,6,0,6,0,0/)
+  			    ibc(1:6,2) = (/6,6,6,0,0,0/)
 			  end if
+!  ..... fiber core prism -- old input
+!			case (2)
+!			call domain_number(iel, ndom)
+!			  write(*,*) 'GEOM_NO = ', GEOM_NO
+!			  ibc(1:6,1) = (/1,1,0,1,0,0/)
+!		      if(IBCFlag.eq.3) then
+!                ibc(1:6,2) = (/6,9,0,6,0,0/)
+!		      else
+!  			    ibc(1:6,2) = (/6,6,0,6,0,0/)
+!			  end if
 
-  ! .... full fiber prism
+! ...... full fiber prism -- modified input
 			case (3)
 			call domain_number(iel, ndom)
 			  write(*,*) 'GEOM_NO = ', GEOM_NO
 			  select case(ndom)
 			  case(1,2,3,4)
 				ibc(1:6,1) = (/1,1,0,0,0,0/)
-        if(IBCFlag.eq.3) then
-          ibc(1:6,2) = (/6,9,0,0,0,0/)
-        else
-        ibc(1:6,2) = (/6,6,0,0,0,0/)
-        end if
-		    case(5,6,7,8)
-		    ibc(1:6,1) = (/1,1,0,1,0,0/)
-		    if(IBCFlag.eq.3) then
-          ibc(1:6,2) = (/6,9,0,6,0,0/)
-		    else
-  			ibc(1:6,2) = (/6,6,0,6,0,0/)
-			  end if
-			  endselect
+                if(IBCFlag.eq.3) then
+                  ibc(1:6,2) = (/6,9,0,0,0,0/)
+                else
+                  ibc(1:6,2) = (/6,6,0,0,0,0/)
+                end if
+		      case(5,6,7,8)
+		        ibc(1:6,1) = (/1,1,1,0,0,0/)
+		        if(IBCFlag.eq.3) then
+                  ibc(1:6,2) = (/6,9,6,0,0,0/)
+		        else
+  			      ibc(1:6,2) = (/6,6,6,0,0,0/)
+			    end if
+			endselect
+
+! ..... full fiber prism - old input
+!			case (3)
+!			call domain_number(iel, ndom)
+!			  write(*,*) 'GEOM_NO = ', GEOM_NO
+!			  select case(ndom)
+!			  case(1,2,3,4)
+!				ibc(1:6,1) = (/1,1,0,0,0,0/)
+!        if(IBCFlag.eq.3) then
+!          ibc(1:6,2) = (/6,9,0,0,0,0/)
+!        else
+!        ibc(1:6,2) = (/6,6,0,0,0,0/)
+!        end if
+!		    case(5,6,7,8)
+!		    ibc(1:6,1) = (/1,1,0,1,0,0/)
+!		    if(IBCFlag.eq.3) then
+!          ibc(1:6,2) = (/6,9,0,6,0,0/)
+!		    else
+!  			ibc(1:6,2) = (/6,6,0,6,0,0/)
+!			  end if
+!			  endselect
 
   !  ..... fiber core hexa
       case (4)

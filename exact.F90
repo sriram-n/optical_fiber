@@ -353,6 +353,7 @@ subroutine hcurl_solution(Xp, E,dE,d2E)
       elseif (ISOL .eq. 2) then
 
       om = OMEGA
+            
       f_x= sin(om*Xp(1))!dexp(-Xp(1)**2)/20.d0!sin(OMEGA*Xp(1))
       f_y= sin(om*Xp(2))!dexp(-Xp(2)**2)/20.d0!sin(OMEGA*Xp(2))
       f_z= sin(om*Xp(3))
@@ -421,7 +422,7 @@ subroutine hcurl_solution(Xp, E,dE,d2E)
 !     2nd order derivatives
       ddf_x=0.d0
       ddf_y=0.d0
-      ddf_z=2.
+      ddf_z=2.d0
 
       !  ...fundamental TE10 mode for rectangular waveguide
       elseif (ISOL .eq. 6) then

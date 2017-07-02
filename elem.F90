@@ -652,6 +652,7 @@ subroutine elem_dpgMaxwell(Mdle,MdE,MdQ, &
   VTYPE, dimension(MdQ,MdE),   intent(out) :: ZalocQE
   VTYPE, dimension(MdQ,MdQ),   intent(out) :: ZalocQQ
 !
+
 !.......declare edge/face type varibles
   character(len=4) :: etype,ftype
 !
@@ -768,6 +769,7 @@ subroutine elem_dpgMaxwell(Mdle,MdE,MdQ, &
   real*8  :: bg_gain, ion_gain,EfieldNorm,gainFunction,rndotE,alpha
 
   nk(k1,k2) = (k2-1)*k2/2+k1
+! ..... allocate copy matrices
 !
 !---------------------------------------------------------------------
 !
@@ -805,6 +807,7 @@ subroutine elem_dpgMaxwell(Mdle,MdE,MdQ, &
 
 ! ...get the element boundary conditions flags
   call find_bc(Mdle, ibc)
+  iprint = 0
   if (iprint.ge.1) then
     write(*,7001) Mdle
 7001   format('elem: B!FLAGS FOR Mdle = ',i5)
@@ -813,15 +816,24 @@ subroutine elem_dpgMaxwell(Mdle,MdE,MdQ, &
 7002     format('     ATTRIBUTE = ',a6,' FLAGS = ',6i2)
   enddo
   endif
+  iprint = 0
+
+  !do i=1,MAXbrickH
+  !write(*,*) 'i = ', i
+  !write(*,*) 'xnod(1,i) = ', xnod(1,i)
+  !write(*,*) 'xnod(2,i) = ', xnod(2,i)
+  !write(*,*) 'xnod(3,i) = ', xnod(3,i)
+  !enddo 
+  !call pause
 !
 ! ! !..............FOR LONG WAVEGUIDE: RE-USING STIFFNESS MATRICES
 ! ...check if one needs to recompute element matrices
-  ! idec=0
-  ! call copy_element_matrices(MdE,MdQ,xnod,ibc, idec, &
-  !                            ZalocEE,ZalocEQ, &
-  !                            ZalocQE,ZalocQQ,ZblocE,ZblocQ)
-  ! if (idec.eq.1) return
-! !..............FOR LONG WAVEGUIDE: RE-USING STIFFNESS MATRICES
+   idec=0
+   call copy_element_matrices(MdE,MdQ,xnod,ibc, idec, &
+                              ZalocEE,ZalocEQ, &
+                              ZalocQE,ZalocQQ,ZblocE,ZblocQ)
+   if (idec.eq.1) return
+!..............FOR LONG WAVEGUIDE: RE-USING STIFFNESS MATRICES
 ! ... get current solution dofs
   call solelm(Mdle, zdofH,zdofE,zdofV,zdofQ)
 !
@@ -837,13 +849,16 @@ subroutine elem_dpgMaxwell(Mdle,MdE,MdQ, &
     case(3)
     select case(ndom)
       case(1,2,3,4)
-      bg_gain = REF_INDEX_CORE**2
+!      bg_gain = REF_INDEX_CORE**2
+		bg_gain = 1.d0
       case(5,6,7,8)
-      bg_gain = REF_INDEX_CLAD**2
+!      bg_gain = REF_INDEX_CLAD**2
+		bg_gain = 1.d0
     end select
 !   write(*,*)'ndom, bg_gain is: ', ndom, bg_gain
     case(4)
-    bg_gain = REF_INDEX_CORE**2
+!    bg_gain = REF_INDEX_CORE**2
+	 bg_gain = 1.d0
     case(5)
     select case(ndom)
       case(1,2,3,4,5)
@@ -864,14 +879,13 @@ subroutine elem_dpgMaxwell(Mdle,MdE,MdQ, &
   BLOADE = ZERO; STIFFEE = ZERO; STIFFEQ = ZERO; AP_Maxwell = ZERO
   STIFF_ALLE = ZERO
 
-! stiffness matrices to store
-  ZFL_EE = ZERO; ZFL_EQ = ZERO; ZFL_QQ = ZERO; ZLOADFL_E = ZERO;
-  ZLOADFL_Q = ZERO
 ! ...shortcut: adjust frequency
 ! ...element size:
   h = min(abs(xnod(1,2)-xnod(1,1)),abs(xnod(2,4)-xnod(2,1)), &
       abs(xnod(3,5)-xnod(3,1)))
   omeg = min(OMEGA,6.d0/h)
+  
+
 !
   omeg = OMEGA
 ! ...auxiliary constant1
@@ -1120,7 +1134,7 @@ subroutine elem_dpgMaxwell(Mdle,MdE,MdQ, &
                      x,dxdxi,dxidx,rjac,dxdt,rn,bjac)
     weight = bjac*wtloc(l)
 ! ......check for impedance BC
-! .......impedance B!boundary ......................................
+! .......impedance boundary ......................................
     if (ibc(if,2).eq.9) then
       !write(*,*) 'putting impedance BCs'
 !
@@ -1328,108 +1342,6 @@ subroutine elem_dpgMaxwell(Mdle,MdE,MdQ, &
   enddo
 !
 
-! !----------------------------------------------------------------------
-! ! c   ..penalty constraint
-
-!   allocate(zConstraintMatrix(2,6*nrdofQ+2*NrdofE))
-!   allocate(zConstraintLoad(2))
-! !
-!   alpha = 1000000.d0
-!   zConstraintLoad = ZERO; zConstraintMatrix = ZERO
-! !   ...boundary integrals...
-
-! !   ...loop through element edges
-! ! ...loop through element faces
-!   do if=1,nrf
-! !
-! ! .....sign factor to determine the OUTWARD normal unit vector
-!   nsign = nsign_param(etype,if)
-! !
-! ! .....face type
-!   ftype = face_type(etype,if)
-! !
-! ! .....face order of approximation
-!   call face_order(etype,if,norder, norderf)
-! !
-! ! .....set 2D quadrature
-!   INTEGRATION = NORD_ADD
-!   call set_2Dint(ftype,norderf, nint,tloc,wtloc)
-!   INTEGRATION = 0
-! !
-! ! .....loop through integration points
-!  ! write(*,*)'elem_dpgMaxwell: nint boundary is: ', nint
-!   do l=1,nint
-! !
-! ! .......face coordinates
-!     t(1:2) = tloc(1:2,l)
-! !
-! ! .......face parametrization
-!     call face_param(etype,if,t, xi,dxidt)
-! !
-! ! .......determine element H1 shape functions (for geometry)
-!     call shape3H(etype,xi,norder,norient_edge,norient_face, &
-!                      nrdofH,shapH,gradH)
-! !
-! ! .......determine element H(curl) shape functions (for fluxes)
-!     call shape3E(etype,xi,norderc,norient_edge,norient_face, &
-!                      nrdofE,shapE,curlE)
-! !
-! ! .......geometry
-!     call bgeom3D(Mdle,xi,xnod,shapH,gradH,nrdofH,dxidt,nsign, &
-!                      x,dxdxi,dxidx,rjac,dxdt,rn,bjac)
-!     weight = bjac*wtloc(l)
-! ! .........loop through Hcurl trial functions
-!       do k1=1,nrdofE
-! !
-! ! ...........value of the shape function at the point
-!         qq(1:3) = shapE(1,k1)*dxidx(1,1:3) &
-!                      + shapE(2,k1)*dxidx(2,1:3) &
-!                      + shapE(3,k1)*dxidx(3,1:3)
-!         call dot_product(rn,qq, rndotE)
-! !
-! ! ...........accumulate for the load vector
-!       k = 2*k1-1
-!       zConstraintMatrix(1,k) = zConstraintMatrix(1,k) &
-!                     + rndotE*weight
-!       k = 2*k1
-!       zConstraintMatrix(2,k) = zConstraintMatrix(2,k) &
-!                     + rndotE*weight
-! !...    end loop over trial space
-!       enddo
-! !...    end loop over integration points
-!     enddo
-! !...    end loop over faces
-!   enddo
-
-!   ! do i=1,NRHS-1
-!   !   write(*,*) 'zConstraintMatrix(1,i) is : ', zConstraintMatrix(1,i)
-!   !   write(*,*) 'zConstraintMatrix(2,i) is : ', zConstraintMatrix(2,i)
-!   ! enddo
-
-!     ! call pause
-
-!   zConstraintMatrix = alpha*zConstraintMatrix
-!   zConstraintLoad = alpha*zConstraintLoad
-
-!   do i=1,NRHS-1
-!     do j=1,NRHS-1
-!       STIFF_ALLE(i,j) = STIFF_ALLE(i,j) + conjg(zConstraintMatrix(1,i))*zConstraintMatrix(1,j) &
-!             + conjg(zConstraintMatrix(2,i))*zConstraintMatrix(2,j)
-!     enddo
-!   enddo
-
-!   !call ZHERK(uplo,trans,NRHS-1,2,ZONE,zConstraintMatrix, &
-!   !           NRHS-1,ZONE, &
-!   !           STIFF_ALLE(1:NRHS-1,1:NRHS-1),NRHS-1)
-!       ! STIFF_ALLE(NRHS,1:NRHS-1) = &
-!       !       conjg(zConstraintMatrix(1,1:NRHS-1))*zConstraintLoad(1) &
-!       !       +conjg(zConstraintMatrix(2,1:NRHS-1))*zConstraintLoad(2)
-!   deallocate(zConstraintMatrix,zConstraintLoad)
-!   ! do i=1,NRHS-1
-!   !   STIFF_ALLE(i+1:NRHS,i) = conjg(STIFF_ALLE(i,i+1:NRHS))
-!   ! enddo
-! ! !----------------------------------------------------------------------
-! ! c   ..end of penalty constraint
 !
   ZblocE(1:j1) = STIFF_ALLE(1:j1,j1+j2+1)
   ZblocQ(1:j2) = STIFF_ALLE(j1+1:j1+j2,j1+j2+1)
@@ -1441,14 +1353,14 @@ subroutine elem_dpgMaxwell(Mdle,MdE,MdQ, &
   ZalocQQ(1:j2,1:j2) = STIFF_ALLE(j1+1:j1+j2,j1+1:j1+j2)
 !
 
- ! if (idec.ne.2) then
- !   write(*,*) 'elem_dpgMaxwell: idec = ',idec
- !   stop 1
- ! endif
- ! call copy_element_matrices(MdE,MdQ,xnod,ibc, idec, &
- !                            ZalocEE,ZalocEQ, &
- !                            ZalocQE,ZalocQQ,ZblocE,ZblocQ)
- ! write(*,*)'ZalocEE is: ', ZalocEE(1:MdE,1:MdE)
+   if (idec.ne.2) then
+    write(*,*) 'elem_dpgMaxwell: idec = ',idec
+    stop 1
+   endif
+   call copy_element_matrices(MdE,MdQ,xnod,ibc, idec, &
+                             ZalocEE,ZalocEQ, &
+                             ZalocQE,ZalocQQ,ZblocE,ZblocQ)
+  !write(*,*)'ZalocEE is: ', ZalocEE(1:MdE,1:MdE)
  ! write(*,*) '   '
  ! write(*,*)'ZalocEQ is: ', ZalocEE(1:MdE,1:MdQ)
  ! write(*,*) '   '
@@ -1458,7 +1370,7 @@ subroutine elem_dpgMaxwell(Mdle,MdE,MdQ, &
  ! write(*,*) '   '
  ! call pause
 
-
+ ! iprint = 2
   if (iprint.ge.1) then
     write(*,7010)
 7010   format('elem_dpgMaxwell: ZblocE,ZblocQ = ')
@@ -1555,11 +1467,13 @@ subroutine copy_element_matrices(MdE,MdQ,Xnod,ibc, Idec, &
 !
 ! ...element geometry dof
   real*8, dimension(3,MAXbrickH),intent(in) :: Xnod
-  integer  :: Idec
+  integer, intent(inout)  :: Idec
 !
-  integer :: iprint,i,checkIBC,j
+  integer :: iprint,ilayer,j,i
 !
   iprint=1
+  ZblocE = ZERO; ZblocQ = ZERO
+  write(*,*) 'copying matrices'
 !
     select case(Idec)
 !
@@ -1568,16 +1482,20 @@ subroutine copy_element_matrices(MdE,MdQ,Xnod,ibc, Idec, &
 ! ... check if IBC is imposed, if so, always compute matrices
       do j=1,6
         if(ibc(j,2).eq.9) then
-          write(*,*) 'ibc is imposed'
+!          write(*,*) 'ibc is imposed'
           Idec = 2
           return
         endif
       enddo
 !
 ! ....find the corresponding element in the first layer
-      do i=1,NRFL
-        if ((abs(Xnod(1,1)-XYVERT(1,i)).lt.GEOM_TOL).and. &
-            (abs(Xnod(2,1)-XYVERT(2,i)).lt.GEOM_TOL)) go to 10
+      do ilayer=1,NRFL
+        if ((abs(Xnod(1,1)-XYVERT(1,1,ilayer)).lt.GEOM_TOL).and. &
+            (abs(Xnod(2,1)-XYVERT(2,1,ilayer)).lt.GEOM_TOL).and. & 
+            (abs(Xnod(1,2)-XYVERT(1,2,ilayer)).lt.GEOM_TOL).and. &
+            (abs(Xnod(2,2)-XYVERT(2,2,ilayer)).lt.GEOM_TOL).and. &
+            (abs(Xnod(1,3)-XYVERT(1,3,ilayer)).lt.GEOM_TOL).and. &
+            (abs(Xnod(2,3)-XYVERT(2,3,ilayer)).lt.GEOM_TOL)) go to 10
       enddo
 !
 ! ....no element with this position has been computed yet
@@ -1585,39 +1503,85 @@ subroutine copy_element_matrices(MdE,MdQ,Xnod,ibc, Idec, &
 !
 ! ....element matrices have been computed
 10    Idec=1
-      write(*,*) 'not computing the stiffness matrices!'
+!      write(*,*) 'not computing the stiffness matrices!'
+!      write(*,*) 'ilayer: ', ilayer
+!      write(*,*) 'NRFL: ', NRFL
+!      write(*,*) 'xnod is'
+!	  write(*,*) 'xnod(1,1) is', Xnod(1,1)
+!	  write(*,*) 'xnod(2,1) is', Xnod(2,1)
+!	  call pause
+
 ! ....copy the element matrices from the temporary data structure
-      ZalocEE(1:MdE,1:MdE) = ZFL_EE(1:MdE,1:MdE,i)
-      ZalocEQ(1:MdE,1:MdQ) = ZFL_EQ(1:MdE,1:MdQ,i)
-      ZalocQQ(1:MdQ,1:MdQ) = ZFL_QQ(1:MdQ,1:MdQ,i)
-      ZalocQE(1:MdQ,1:MdE) = ZFL_QE(1:MdQ,1:MdE,i)
-      ZblocE(1:MdE) = ZLOADFL_E(1:MdE,i)
-      ZblocQ(1:MdQ) = ZLOADFL_Q(1:MdQ,i)
+!!$OMP CRITICAL
+      ZalocEE(1:MdE,1:MdE) = ZFL_EE(1:MdE,1:MdE,ilayer)
+      ZalocEQ(1:MdE,1:MdQ) = ZFL_EQ(1:MdE,1:MdQ,ilayer)
+      ZalocQQ(1:MdQ,1:MdQ) = ZFL_QQ(1:MdQ,1:MdQ,ilayer)
+!      ZalocQE(1:MdQ,1:MdE) = ZFL_QE(1:MdQ,1:MdE,ilayer)
+!      ZblocE(1:MdE) = ZLOADFL_E(1:MdE,ilayer)
+!      ZblocQ(1:MdQ) = ZLOADFL_Q(1:MdQ,ilayer)
+!      write(*,*) 'ilayer,NRFL is ', ilayer, NRFL
+!      write(*,*) ''     
+!!$OMP END CRITICAL      
+!      write(*,8010)
+!8010   format('elem_dpgMaxwell: ZblocE,ZblocQ = ')
+!    write(*,8011) ZLOADFL_E(1:MdE,ilayer)
+!    write(*,8011) ZLOADFL_Q(1:MdQ,ilayer)
+!8011   format(10e12.5)
+!    call pause
+!    write(*,8012)
+!8012   format('elem_dpgMaxwell: ZalocEE = ')
+!    do i=1,MdE
+!    write(*,8013) i,ZFL_EE(i,1:MdE,ilayer)
+!8013     format('i = ',i3,10(/,5(2e12.5,2x)))
+!    enddo
+!    call pause
+!    write(*,8014)
+!8014   format('elem_dpgMaxwell: ZalocEQ = ')
+!   do i=1,MdE
+!      write(*,8013) i,ZFL_EQ(i,1:MdQ,ilayer)
+!    enddo
+!    call pause
+!    write(*,8015)
+!8015   format('elem_dpgMaxwell: ZalocQQ = ')
+!    do i=1,MdQ
+!      write(*,8013) i,ZFL_QQ(i,1:MdQ,ilayer)
+!    enddo
+!    call pause
 !
 ! ....finish generating the matrices
-      ! do i=1,MdQ
-      !   ZalocQE(i,1:MdE) = conjg(ZalocEQ(1:MdE,i))
-      ! enddo
+       do i=1,MdQ
+         ZalocQE(i,1:MdE) = conjg(ZalocEQ(1:MdE,i))
+       enddo
       return
 !
 ! ..store the element matrices
     case(2)
 !
+      !write(*,*) 'ilayer: ', ilayer
+      !write(*,*) 'NRFL: ', NRFL
 ! ....store first vertex node xy coordinates
+!!$OMP CRITICAL      
       NRFL=NRFL+1
       if (NRFL.gt.MAXNRFL) then
         write(*,*) 'copy_element_matrices: INCREASE MAXNRFL'
         stop 1
       endif
-      XYVERT(1:2,NRFL) = Xnod(1:2,1)
+!      write(*,*) 'computing the stiffness matrices!'
+!		write(*,*) 'xnod is'
+!	    write(*,*) 'xnod(1,1) is', Xnod(1,1)
+!	    write(*,*) 'xnod(2,1) is', Xnod(2,1)
+!	    write(*,*) 'NRFL: ', NRFL
+!	    call pause
+      XYVERT(1:2,1:3,NRFL) = Xnod(1:2,1:3)
 !
 ! ....copy the element matrices from the temporary data structure
       ZFL_EE(1:MdE,1:MdE,NRFL) = ZalocEE(1:MdE,1:MdE)
       ZFL_EQ(1:MdE,1:MdQ,NRFL) = ZalocEQ(1:MdE,1:MdQ)
-      ZFL_QE(1:MdQ,1:MdE,NRFL) = ZalocQE(1:MdQ,1:MdE)
       ZFL_QQ(1:MdQ,1:MdQ,NRFL) = ZalocQQ(1:MdQ,1:MdQ)
-      ZLOADFL_E(1:MdE,NRFL) =  ZblocE(1:MdE)
-      ZLOADFL_Q(1:MdQ,NRFL) = ZblocQ(1:MdQ)
+!     ZFL_QE(1:MdQ,1:MdE,NRFL) = ZalocQE(1:MdQ,1:MdE)      
+!     ZLOADFL_E(1:MdE,NRFL) =  ZblocE(1:MdE)
+!     ZLOADFL_Q(1:MdQ,NRFL) = ZblocQ(1:MdQ)
+!!$OMP END CRITICAL      
 !
     end select
 !
@@ -1780,7 +1744,7 @@ subroutine copy_element_matrices(MdE,MdQ,Xnod,ibc, Idec, &
 !       ZblocQ(1:j3) = ZblocQ(1:j3) + alpha*zd*zCp(1:j3)
 
 
-! C  ....................................................................
-! C  ....................................................................
+! C  ...................................................................
+! C  ...................................................................
 ! c
 !       deallocate(zCu,zCp)
